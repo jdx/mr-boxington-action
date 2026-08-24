@@ -4,7 +4,7 @@ import * as exec from '@actions/exec'
 import {context} from '@actions/github'
 import * as tc from '@actions/tool-cache'
 import {createHash} from 'node:crypto'
-import {chmod, readFile} from 'node:fs/promises'
+import {chmod, mkdir, readFile} from 'node:fs/promises'
 import path from 'node:path'
 import {
   generatedKey,
@@ -111,6 +111,7 @@ async function main(): Promise<void> {
   }
 
   const cacheDir = await capture(installed.bin, ['cache', 'dir'])
+  await mkdir(cacheDir, {recursive: true})
   const generation = core.getInput('cache-generation')
   const sha = context.payload.pull_request?.base.sha ?? context.sha
   const primaryKey =
