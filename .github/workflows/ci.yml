@@ -39,12 +39,32 @@ jobs:
       - run: mbx --version
       - run: mbx cache dir
 
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./
+        with:
+          backend: server
+          server-url: https://cache.example.com
+          namespace: action/smoke-test
+          oidc-audience: mbx-cache
+      - name: Check exported configuration
+        run: |
+          test "$MBX_REMOTE_URL" = https://cache.example.com
+          test "$MBX_REMOTE_NAMESPACE" = action/smoke-test
+          test "$MBX_REMOTE_OIDC_AUDIENCE" = mbx-cache
+          test "$MBX_REMOTE_MODE" = read-write
+          mbx --version
+
   final:
     permissions: {}
-    needs: [action, test]
+    needs: [action, server, test]
     runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
     steps:
-      - if: needs.action.result != 'success' || needs.test.result != 'success'
+      - if: needs.action.result != 'success' || needs.server.result != 'success' || needs.test.result != 'success'
         run: exit 1
       - run: echo "All CI jobs completed successfully"
