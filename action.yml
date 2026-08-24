@@ -1,0 +1,59 @@
+name: mr boxington
+description: Set up mbx with GitHub Actions cache or an mbx cache server
+author: jdx
+
+branding:
+  icon: archive
+  color: orange
+
+inputs:
+  backend:
+    description: Cache backend, either "github" or "server"
+    default: github
+  version:
+    description: mbx release version, such as "0.3.0", or "latest"
+    default: latest
+  cache-key:
+    description: Complete primary key for the GitHub cache backend
+    required: false
+  restore-keys:
+    description: Newline-separated restore key prefixes for the GitHub cache backend
+    required: false
+  cache-generation:
+    description: Value included in generated GitHub cache keys; change it to start fresh
+    default: v1
+  max-size:
+    description: Maximum local cache size before a GitHub cache entry is saved
+    default: 3GB
+  server-url:
+    description: Base URL for the server backend
+    required: false
+  namespace:
+    description: Cache namespace for the server backend
+    required: false
+  token:
+    description: Bearer token for the server backend
+    required: false
+  token-file:
+    description: File containing a bearer token for the server backend
+    required: false
+  oidc-audience:
+    description: OIDC audience for the server backend; the job needs id-token write permission
+    required: false
+  server-mode:
+    description: Requested server mode (read-write, read-only, or write-only)
+    default: read-write
+
+outputs:
+  cache-hit:
+    description: Whether the exact GitHub cache key was restored
+  cache-primary-key:
+    description: Primary GitHub cache key used by the action
+  mbx-version:
+    description: Installed mbx version
+
+runs:
+  using: node24
+  main: dist/index.js
+  post: dist/index.js
+  post-if: success()

@@ -1,0 +1,26 @@
+{
+  "name": "mr-boxington-action",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Set up mr boxington with GitHub Actions cache or a remote cache server",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.js --minify",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "all": "npm run check && npm test && npm run build && git diff --exit-code -- dist"
+  },
+  "dependencies": {
+    "@actions/cache": "6.2.0",
+    "@actions/core": "3.0.1",
+    "@actions/exec": "3.0.0",
+    "@actions/github": "9.1.1",
+    "@actions/tool-cache": "4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.4"
+  }
+}
