@@ -1,5 +1,32 @@
 export type Backend = 'github' | 'server'
 
+export interface CallingCardRow {
+  label: string
+  value: string
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+export function callingCard(note: string, rows: CallingCardRow[]): string {
+  const tableRows = rows
+    .map(
+      ({label, value}) =>
+        `<tr><th align="left">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
+    )
+    .join('')
+  return [
+    `<blockquote>${escapeHtml(note)}</blockquote>`,
+    `<table>${tableRows}</table>`
+  ].join('')
+}
+
 export function parseBackend(value: string): Backend {
   if (value === 'github' || value === 'server') return value
   throw new Error(`backend must be "github" or "server", got ${JSON.stringify(value)}`)

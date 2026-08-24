@@ -7,6 +7,8 @@ import {createHash} from 'node:crypto'
 import {chmod, mkdir, readFile} from 'node:fs/promises'
 import path from 'node:path'
 import {
+  callingCard,
+  type CallingCardRow,
   generatedKey,
   generatedRestoreKey,
   normalizedVersion,
@@ -21,6 +23,19 @@ const CACHE_KEY_STATE = 'mbx-cache-key'
 const CACHE_HIT_STATE = 'mbx-cache-hit'
 const MBX_STATE = 'mbx-bin'
 const MAX_SIZE_STATE = 'mbx-max-size'
+
+async function leaveCallingCard(note: string, rows: CallingCardRow[]): Promise<void> {
+  try {
+    await core.summary
+      .addDetails(
+        '📦 <strong>Mr Boxington inspected the premises.</strong>',
+        callingCard(note, rows)
+      )
+      .write()
+  } catch (error) {
+    core.debug(`Could not write Mr Boxington's run summary: ${String(error)}`)
+  }
+}
 
 async function capture(command: string, args: string[]): Promise<string> {
   let output = ''
@@ -107,6 +122,11 @@ async function main(): Promise<void> {
 
   if (backend === 'server') {
     configureServer()
+    await leaveCallingCard('I have made the necessary arrangements.', [
+      {label: 'mbx', value: installed.version},
+      {label: 'Backend', value: 'cache server'},
+      {label: 'Mode', value: core.getInput('server-mode')}
+    ])
     return
   }
 
@@ -131,12 +151,23 @@ async function main(): Promise<void> {
   core.saveState(CACHE_HIT_STATE, hit ? 'true' : 'false')
   const defaultBranch = (context.payload.repository as {default_branch?: string} | undefined)
     ?.default_branch
+  const save = shouldSave(context.eventName, context.ref, defaultBranch)
   core.saveState(
     POST_STATE,
-    shouldSave(context.eventName, context.ref, defaultBranch)
-      ? 'github-save'
-      : 'github-restore-only'
+    save ? 'github-save' : 'github-restore-only'
   )
+  const cacheResult = hit ? 'exact hit' : restoredKey ? 'warm start' : 'miss'
+  const note = hit
+    ? 'Just as I left it.'
+    : restoredKey
+      ? 'Not precisely what I ordered, but quite serviceable.'
+      : 'The cupboard was bare. How stimulating.'
+  await leaveCallingCard(note, [
+    {label: 'mbx', value: installed.version},
+    {label: 'Backend', value: 'GitHub Actions cache'},
+    {label: 'Cache', value: cacheResult},
+    {label: 'Policy', value: save ? 'save after a successful job' : 'restore only'}
+  ])
 }
 
 async function post(): Promise<void> {

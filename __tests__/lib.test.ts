@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 import {
+  callingCard,
   generatedKey,
   generatedRestoreKey,
   normalizedVersion,
@@ -7,6 +8,21 @@ import {
   releaseTarget,
   shouldSave
 } from '../src/lib.js'
+
+describe('calling card', () => {
+  it('renders useful details and escapes action inputs', () => {
+    expect(
+      callingCard('<quite so>', [
+        {label: 'mbx', value: '0.3.0'},
+        {label: 'Backend', value: '<cache & server>'}
+      ])
+    ).toBe(
+      '<blockquote>&lt;quite so&gt;</blockquote>' +
+        '<table><tr><th align="left">mbx</th><td>0.3.0</td></tr>' +
+        '<tr><th align="left">Backend</th><td>&lt;cache &amp; server&gt;</td></tr></table>'
+    )
+  })
+})
 
 describe('inputs', () => {
   it('validates backends and versions', () => {
