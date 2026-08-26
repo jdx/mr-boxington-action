@@ -7,7 +7,6 @@ import {fileURLToPath} from 'node:url'
 const EXPECTED_ASSETS = [
   'mbx-aarch64-apple-darwin.tar.gz',
   'mbx-aarch64-unknown-linux-musl.tar.gz',
-  'mbx-x86_64-apple-darwin.tar.gz',
   'mbx-x86_64-pc-windows-msvc.zip',
   'mbx-x86_64-unknown-linux-musl.tar.gz'
 ]

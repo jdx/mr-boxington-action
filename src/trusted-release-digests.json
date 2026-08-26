@@ -5,5 +5,11 @@
     "mbx-x86_64-apple-darwin.tar.gz": "9f1016b0592ffd3b4b4000640223e10a2100cc6136d722fac5c4829cb89fc7ed",
     "mbx-x86_64-pc-windows-msvc.zip": "f841b1907cf86c54db4d3d2d1e88f87303ccc8f720efff90b6331d7d5592bf4e",
     "mbx-x86_64-unknown-linux-musl.tar.gz": "b288265404b8fa4620ea1d082ba9b33a0a1695212d88a385e76aa07a743da250"
+  },
+  "0.5.1": {
+    "mbx-aarch64-apple-darwin.tar.gz": "02b014fa97bacec5333c3aac49af38f3787d960a0c67c657efa9d73c349164c1",
+    "mbx-aarch64-unknown-linux-musl.tar.gz": "34f3b95832e4a422a9bdb7a30fedcbcef801448d0e5692753b4ba78da4d95e6b",
+    "mbx-x86_64-pc-windows-msvc.zip": "df3adb7deb325ef283d0b5d441f3ce5bf0f4cedc72effa379688d786110fb929",
+    "mbx-x86_64-unknown-linux-musl.tar.gz": "405b82a99b0175532adbcfcb3b3d6dfc6c57981140b97b255c7fab2de0e262e9"
   }
 }
