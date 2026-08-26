@@ -79,7 +79,7 @@ own authorization policy.
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `backend` | `github` | `github` or `server` |
-| `version` | `0.4.0` | mbx release version, or `latest` |
+| `version` | `latest` | mbx release version, or `latest` |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `max-size` | `3GB` | Store budget applied before save |
 | `cache-key` | generated | Complete GitHub cache primary key |
