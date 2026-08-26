@@ -11,7 +11,7 @@ inputs:
     description: Cache backend, either "github" or "server"
     default: github
   version:
-    description: mbx release version, such as "0.3.0", or "latest"
+    description: mbx release version, such as "0.4.0", or "latest"
     default: latest
   cache-key:
     description: Complete primary key for the GitHub cache backend

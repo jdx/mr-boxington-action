@@ -1,9 +1,30 @@
+import trustedReleaseDigests from './trusted-release-digests.json'
+
 export type Backend = 'github' | 'server'
 
 export interface CallingCardRow {
   label: string
   value: string
 }
+
+export interface GithubRelease {
+  tag_name: string
+  immutable: boolean
+  assets: {
+    name: string
+    digest: string | null
+  }[]
+}
+
+export interface VerifiedReleaseAsset {
+  version: string
+  sha256: string
+}
+
+// The action itself is the independent trust anchor for releases recorded
+// here, including releases that predate GitHub release immutability.
+const TRUSTED_RELEASE_DIGESTS: Record<string, Record<string, string>> =
+  trustedReleaseDigests
 
 function escapeHtml(value: string): string {
   return value
@@ -52,6 +73,38 @@ export function normalizedVersion(value: string): string {
     throw new Error(`invalid mbx version ${JSON.stringify(value)}`)
   }
   return version.replace(/^v/, '')
+}
+
+export function trustedReleaseAsset(
+  version: string,
+  archiveName: string
+): VerifiedReleaseAsset | undefined {
+  const sha256 = TRUSTED_RELEASE_DIGESTS[version]?.[archiveName]
+  return sha256 ? {version, sha256} : undefined
+}
+
+export function verifiedReleaseAsset(
+  release: GithubRelease,
+  requested: string,
+  archiveName: string
+): VerifiedReleaseAsset {
+  const version = normalizedVersion(release.tag_name)
+  if (requested !== 'latest' && version !== requested) {
+    throw new Error(`GitHub returned mbx ${version} when ${requested} was requested`)
+  }
+  const trusted = trustedReleaseAsset(version, archiveName)
+  if (trusted) return trusted
+  if (release.immutable !== true) {
+    throw new Error(
+      `mbx ${version} is not an immutable GitHub release and has no checksum pinned by this action`
+    )
+  }
+  const asset = release.assets.find(candidate => candidate.name === archiveName)
+  const sha256 = asset?.digest?.match(/^sha256:([0-9a-f]{64})$/)?.[1]
+  if (!sha256) {
+    throw new Error(`${archiveName} has no valid SHA-256 digest in the mbx ${version} release`)
+  }
+  return {version, sha256}
 }
 
 export function generatedKey(

@@ -6,7 +6,9 @@ import {
   normalizedVersion,
   parseBackend,
   releaseTarget,
-  shouldSave
+  shouldSave,
+  trustedReleaseAsset,
+  verifiedReleaseAsset
 } from '../src/lib.js'
 
 describe('calling card', () => {
@@ -39,6 +41,66 @@ describe('inputs', () => {
     expect(releaseTarget('darwin', 'arm64')).toBe('aarch64-apple-darwin')
     expect(releaseTarget('win32', 'x64')).toBe('x86_64-pc-windows-msvc')
     expect(() => releaseTarget('win32', 'arm64')).toThrow()
+  })
+
+  it('anchors mutable releases to checksums shipped with the action', () => {
+    expect(
+      verifiedReleaseAsset(
+        {tag_name: 'v0.4.0', immutable: false, assets: []},
+        'latest',
+        'mbx-x86_64-unknown-linux-musl.tar.gz'
+      )
+    ).toEqual({
+      version: '0.4.0',
+      sha256: 'b288265404b8fa4620ea1d082ba9b33a0a1695212d88a385e76aa07a743da250'
+    })
+    expect(trustedReleaseAsset('0.3.0', 'mbx-x86_64-unknown-linux-musl.tar.gz')).toBeUndefined()
+  })
+
+  it('accepts unpinned assets only from immutable releases', () => {
+    const release = {
+      tag_name: 'v0.5.0',
+      immutable: true,
+      assets: [
+        {
+          name: 'mbx-x86_64-unknown-linux-musl.tar.gz',
+          digest: `sha256:${'a'.repeat(64)}`
+        }
+      ]
+    }
+    expect(
+      verifiedReleaseAsset(release, '0.5.0', 'mbx-x86_64-unknown-linux-musl.tar.gz')
+    ).toEqual({version: '0.5.0', sha256: 'a'.repeat(64)})
+    expect(() =>
+      verifiedReleaseAsset(
+        {...release, immutable: false},
+        '0.5.0',
+        'mbx-x86_64-unknown-linux-musl.tar.gz'
+      )
+    ).toThrow(/not an immutable GitHub release/)
+  })
+
+  it('rejects mismatched releases and malformed asset digests', () => {
+    expect(() =>
+      verifiedReleaseAsset(
+        {tag_name: 'v0.5.1', immutable: true, assets: []},
+        '0.5.0',
+        'mbx-x86_64-unknown-linux-musl.tar.gz'
+      )
+    ).toThrow(/when 0.5.0 was requested/)
+    expect(() =>
+      verifiedReleaseAsset(
+        {
+          tag_name: 'v0.5.0',
+          immutable: true,
+          assets: [
+            {name: 'mbx-x86_64-unknown-linux-musl.tar.gz', digest: 'sha256:invalid'}
+          ]
+        },
+        '0.5.0',
+        'mbx-x86_64-unknown-linux-musl.tar.gz'
+      )
+    ).toThrow(/no valid SHA-256 digest/)
   })
 
   it('generates scoped keys', () => {
