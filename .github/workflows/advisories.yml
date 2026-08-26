@@ -36,8 +36,11 @@ jobs:
       # source at build time, so a compromise there reaches dist/.
       - id: audit
         continue-on-error: true
-        # `bash -o pipefail` is the default here, so npm audit's exit status
-        # survives the tee and still fails the step.
+        # `shell: bash` is load-bearing: it runs the step under
+        # `bash -eo pipefail`, whereas an unspecified shell is plain `bash -e`.
+        # Without pipefail the pipeline reports tee's status and a failing
+        # `npm audit` would be swallowed -- no mail, no red run.
+        shell: bash
         run: npm audit --audit-level=moderate 2>&1 | tee "$RUNNER_TEMP/audit.txt"
 
       - name: Publish the audit report
