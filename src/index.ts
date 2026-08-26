@@ -14,7 +14,11 @@ import {
   normalizedVersion,
   parseBackend,
   releaseTarget,
-  shouldSave
+  shouldSave,
+  trustedReleaseAsset,
+  verifiedReleaseAsset,
+  type GithubRelease,
+  type VerifiedReleaseAsset
 } from './lib.js'
 
 const POST_STATE = 'mbx-post'
@@ -47,30 +51,48 @@ async function capture(command: string, args: string[]): Promise<string> {
   return output.trim()
 }
 
-async function installMbx(requested: string): Promise<{bin: string; version: string}> {
-  const version = normalizedVersion(requested)
-  if (version !== 'latest') {
-    const found = tc.find('mbx', version)
-    if (found) {
-      core.addPath(found)
-      return {bin: path.join(found, process.platform === 'win32' ? 'mbx.exe' : 'mbx'), version}
-    }
+async function resolveRelease(
+  requested: string,
+  archiveName: string
+): Promise<VerifiedReleaseAsset> {
+  if (requested !== 'latest') {
+    const trusted = trustedReleaseAsset(requested, archiveName)
+    if (trusted) return trusted
   }
+  const endpoint =
+    requested === 'latest'
+      ? 'https://api.github.com/repos/jdx/mr-boxington/releases/latest'
+      : `https://api.github.com/repos/jdx/mr-boxington/releases/tags/v${encodeURIComponent(requested)}`
+  const response = await fetch(endpoint, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    },
+    redirect: 'error'
+  })
+  if (!response.ok) {
+    throw new Error(`could not resolve mbx ${requested}: GitHub returned ${response.status}`)
+  }
+  return verifiedReleaseAsset((await response.json()) as GithubRelease, requested, archiveName)
+}
 
+async function installMbx(requested: string): Promise<{bin: string; version: string}> {
+  const requestedVersion = normalizedVersion(requested)
   const target = releaseTarget(process.platform, process.arch)
   const extension = process.platform === 'win32' ? 'zip' : 'tar.gz'
   const archiveName = `mbx-${target}.${extension}`
-  const tag = version === 'latest' ? 'latest' : `v${version}`
-  const base = `https://github.com/jdx/mr-boxington/releases/${tag === 'latest' ? 'latest/download' : `download/${tag}`}`
+  const {version, sha256} = await resolveRelease(requestedVersion, archiveName)
+  const toolName = `mbx-${sha256}`
+  const found = tc.find(toolName, version)
+  if (found) {
+    core.addPath(found)
+    return {bin: path.join(found, process.platform === 'win32' ? 'mbx.exe' : 'mbx'), version}
+  }
+
+  const base = `https://github.com/jdx/mr-boxington/releases/download/v${version}`
   const archive = await tc.downloadTool(`${base}/${archiveName}`)
-  const sums = await tc.downloadTool(`${base}/SHA256SUMS`)
-  const expectedLine = (await readFile(sums, 'utf8'))
-    .split(/\r?\n/)
-    .find(line => line.endsWith(`  ${archiveName}`))
-  if (!expectedLine) throw new Error(`${archiveName} is absent from SHA256SUMS`)
-  const expected = expectedLine.split(/\s+/)[0]
   const actual = createHash('sha256').update(await readFile(archive)).digest('hex')
-  if (actual !== expected) throw new Error(`checksum mismatch for ${archiveName}`)
+  if (actual !== sha256) throw new Error(`checksum mismatch for ${archiveName}`)
 
   const extracted =
     process.platform === 'win32' ? await tc.extractZip(archive) : await tc.extractTar(archive)
@@ -79,7 +101,10 @@ async function installMbx(requested: string): Promise<{bin: string; version: str
   const rawVersion = await capture(extractedBin, ['--version'])
   const installedVersion = rawVersion.match(/\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/)?.[0]
   if (!installedVersion) throw new Error(`could not parse mbx version from ${JSON.stringify(rawVersion)}`)
-  const toolDir = await tc.cacheDir(extracted, 'mbx', installedVersion)
+  if (installedVersion !== version) {
+    throw new Error(`mbx archive for ${version} contains version ${installedVersion}`)
+  }
+  const toolDir = await tc.cacheDir(extracted, toolName, installedVersion)
   core.addPath(toolDir)
   return {
     bin: path.join(toolDir, process.platform === 'win32' ? 'mbx.exe' : 'mbx'),

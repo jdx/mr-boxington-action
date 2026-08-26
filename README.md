@@ -20,6 +20,10 @@ immutable entry only for pushes to the repository's default branch, so pull
 requests—including forks—are restore-only. Before saving, it prunes the store
 to `3GB` by default.
 
+The action pins the checksum of its default mbx version. Any other resolved
+version—including a newer release selected by `latest`—is accepted only when
+GitHub reports that release as immutable and supplies an asset digest.
+
 Change `cache-generation` when a cache-format or policy change should start
 fresh:
 
@@ -75,7 +79,7 @@ own authorization policy.
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `backend` | `github` | `github` or `server` |
-| `version` | `latest` | mbx release version |
+| `version` | `0.4.0` | mbx release version, or `latest` |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `max-size` | `3GB` | Store budget applied before save |
 | `cache-key` | generated | Complete GitHub cache primary key |
