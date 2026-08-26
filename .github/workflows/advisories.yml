@@ -1,0 +1,95 @@
+name: advisories
+
+# CI runs on push and pull request only, so an advisory published against a
+# dependency of the released action would wait for the next commit to surface.
+# This run is the standing watch for that case, and reports by email because a
+# red scheduled run nobody looks at is not a notification.
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily, away from the top of the hour.
+    - cron: "37 7 * * *"
+
+concurrency:
+  group: advisories
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  advisories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      # npm audit reads the lockfile, so there is nothing to install first.
+      # Dev dependencies are audited too: esbuild and vitest run over this
+      # source at build time, so a compromise there reaches dist/.
+      - id: audit
+        continue-on-error: true
+        # `shell: bash` is load-bearing: it runs the step under
+        # `bash -eo pipefail`, whereas an unspecified shell is plain `bash -e`.
+        # Without pipefail the pipeline reports tee's status and a failing
+        # `npm audit` would be swallowed -- no mail, no red run.
+        shell: bash
+        run: npm audit --audit-level=moderate 2>&1 | tee "$RUNNER_TEMP/audit.txt"
+
+      - name: Publish the audit report
+        if: always()
+        run: |
+          # The audit step may not have got far enough to write a report.
+          if [[ ! -s "$RUNNER_TEMP/audit.txt" ]]; then
+            echo "No audit report was produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo '```'
+            cat "$RUNNER_TEMP/audit.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Email the advisory report
+        if: steps.audit.outcome == 'failure'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIFY_FROM: ${{ secrets.NOTIFY_FROM }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # A missing secret must not masquerade as a clean audit, but it must
+          # not hide the advisory either: warn, and let the failing step below
+          # still turn the run red.
+          if [[ -z "$RESEND_API_KEY" || -z "$NOTIFY_FROM" || -z "$NOTIFY_EMAIL" ]]; then
+            echo "::warning::a notification secret is unset; skipping the advisory email."
+            exit 0
+          fi
+          # jq builds the payload so advisory text can never break the JSON.
+          payload="$(jq -n \
+            --arg from "$NOTIFY_FROM" \
+            --arg to "$NOTIFY_EMAIL" \
+            --arg subject "npm audit found an advisory in ${REPOSITORY}" \
+            --rawfile report "$RUNNER_TEMP/audit.txt" \
+            --arg run_url "$RUN_URL" \
+            --arg repository "$REPOSITORY" \
+            '{from: $from, to: [$to], subject: $subject,
+              html: ("<p><code>npm audit</code> failed on <strong>" + $repository
+                + "</strong>.</p><pre>" + ($report|@html) + "</pre><p><a href=\"" + $run_url
+                + "\">View the workflow run</a>.</p>")}')"
+          curl --fail-with-body -sS -X POST 'https://api.resend.com/emails' \
+            -H "Authorization: Bearer ${RESEND_API_KEY}" \
+            -H 'Content-Type: application/json' \
+            -d "$payload"
+
+      - name: Report the advisory
+        if: steps.audit.outcome == 'failure'
+        run: exit 1
