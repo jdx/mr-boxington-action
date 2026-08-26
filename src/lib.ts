@@ -1,3 +1,5 @@
+import trustedReleaseDigests from './trusted-release-digests.json'
+
 export type Backend = 'github' | 'server'
 
 export interface CallingCardRow {
@@ -19,22 +21,10 @@ export interface VerifiedReleaseAsset {
   sha256: string
 }
 
-// v0.4.0 predates GitHub release immutability, so the action itself is the
-// independent trust anchor for the version it installs by default.
-const TRUSTED_RELEASE_DIGESTS: Record<string, Record<string, string>> = {
-  '0.4.0': {
-    'mbx-aarch64-apple-darwin.tar.gz':
-      '416cab92e23c4652183e4a794af3fdcbc50b56296d8c09f8b6548e7577416307',
-    'mbx-aarch64-unknown-linux-musl.tar.gz':
-      'ed81dab87775bcc8764c7257d8bea0dd8b7f811d6263b71bc7cd83a879661593',
-    'mbx-x86_64-apple-darwin.tar.gz':
-      '9f1016b0592ffd3b4b4000640223e10a2100cc6136d722fac5c4829cb89fc7ed',
-    'mbx-x86_64-pc-windows-msvc.zip':
-      'f841b1907cf86c54db4d3d2d1e88f87303ccc8f720efff90b6331d7d5592bf4e',
-    'mbx-x86_64-unknown-linux-musl.tar.gz':
-      'b288265404b8fa4620ea1d082ba9b33a0a1695212d88a385e76aa07a743da250'
-  }
-}
+// The action itself is the independent trust anchor for releases recorded
+// here, including releases that predate GitHub release immutability.
+const TRUSTED_RELEASE_DIGESTS: Record<string, Record<string, string>> =
+  trustedReleaseDigests
 
 function escapeHtml(value: string): string {
   return value
