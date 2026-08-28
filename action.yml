@@ -13,6 +13,9 @@ inputs:
   version:
     description: mbx release version, such as "0.4.0", or "latest"
     default: latest
+  github-token:
+    description: GitHub token used to resolve mbx release metadata
+    default: ${{ github.token }}
   cache-key:
     description: Complete primary key for the GitHub cache backend
     required: false

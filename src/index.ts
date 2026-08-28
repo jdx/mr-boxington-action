@@ -11,6 +11,7 @@ import {
   type CallingCardRow,
   generatedKey,
   generatedRestoreKey,
+  githubApiHeaders,
   normalizedVersion,
   parseBackend,
   releaseTarget,
@@ -52,17 +53,15 @@ async function capture(command: string, args: string[]): Promise<string> {
 
 async function resolveRelease(
   requested: string,
-  archiveName: string
+  archiveName: string,
+  githubToken: string
 ): Promise<VerifiedReleaseAsset> {
   const endpoint =
     requested === 'latest'
       ? 'https://api.github.com/repos/jdx/mr-boxington/releases/latest'
       : `https://api.github.com/repos/jdx/mr-boxington/releases/tags/v${encodeURIComponent(requested)}`
   const response = await fetch(endpoint, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28'
-    },
+    headers: githubApiHeaders(githubToken),
     redirect: 'error'
   })
   if (!response.ok) {
@@ -71,12 +70,15 @@ async function resolveRelease(
   return verifiedReleaseAsset((await response.json()) as GithubRelease, requested, archiveName)
 }
 
-async function installMbx(requested: string): Promise<{bin: string; version: string}> {
+async function installMbx(
+  requested: string,
+  githubToken: string
+): Promise<{bin: string; version: string}> {
   const requestedVersion = normalizedVersion(requested)
   const target = releaseTarget(process.platform, process.arch)
   const extension = process.platform === 'win32' ? 'zip' : 'tar.gz'
   const archiveName = `mbx-${target}.${extension}`
-  const {version, sha256} = await resolveRelease(requestedVersion, archiveName)
+  const {version, sha256} = await resolveRelease(requestedVersion, archiveName, githubToken)
   const toolName = `mbx-${sha256}`
   const found = tc.find(toolName, version)
   if (found) {
@@ -133,7 +135,9 @@ function configureServer(): void {
 
 async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
-  const installed = await installMbx(core.getInput('version'))
+  const githubToken = core.getInput('github-token')
+  if (githubToken) core.setSecret(githubToken)
+  const installed = await installMbx(core.getInput('version'), githubToken)
   core.info(`Installed mbx ${installed.version}`)
   core.setOutput('mbx-version', installed.version)
   core.saveState(POST_STATE, backend)

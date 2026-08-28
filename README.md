@@ -21,7 +21,8 @@ requests—including forks—are restore-only. Before saving, it prunes the stor
 to `3GB` by default.
 
 The action accepts a resolved version only when GitHub reports that release as
-immutable and supplies an asset digest.
+immutable and supplies an asset digest. Release metadata requests use the
+workflow token by default, which requires `contents: read` permission.
 
 Change `cache-generation` when a cache-format or policy change should start
 fresh:
@@ -79,6 +80,7 @@ own authorization policy.
 | --- | --- | --- |
 | `backend` | `github` | `github` or `server` |
 | `version` | `latest` | mbx release version, or `latest` |
+| `github-token` | `${{ github.token }}` | Token used to resolve mbx release metadata |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `max-size` | `3GB` | Store budget applied before save |
 | `cache-key` | generated | Complete GitHub cache primary key |
