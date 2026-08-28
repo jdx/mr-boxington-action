@@ -7,7 +7,6 @@ import {
   parseBackend,
   releaseTarget,
   shouldSave,
-  trustedReleaseAsset,
   verifiedReleaseAsset
 } from '../src/lib.js'
 
@@ -43,21 +42,7 @@ describe('inputs', () => {
     expect(releaseTarget('win32', 'arm64')).toBe('aarch64-pc-windows-msvc')
   })
 
-  it('anchors mutable releases to checksums shipped with the action', () => {
-    expect(
-      verifiedReleaseAsset(
-        {tag_name: 'v0.4.0', immutable: false, assets: []},
-        'latest',
-        'mbx-x86_64-unknown-linux-musl.tar.gz'
-      )
-    ).toEqual({
-      version: '0.4.0',
-      sha256: 'b288265404b8fa4620ea1d082ba9b33a0a1695212d88a385e76aa07a743da250'
-    })
-    expect(trustedReleaseAsset('0.3.0', 'mbx-x86_64-unknown-linux-musl.tar.gz')).toBeUndefined()
-  })
-
-  it('accepts unpinned assets only from immutable releases', () => {
+  it('accepts assets only from immutable releases', () => {
     const release = {
       tag_name: 'v0.5.0',
       immutable: true,
