@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto'
+
 export type Backend = 'github' | 'server'
 
 export interface CallingCardRow {
@@ -109,13 +111,39 @@ export function generatedKey(
   os: string,
   arch: string,
   generation: string,
+  toolchain: string,
   sha: string
 ): string {
-  return `${os}-${arch}-mbx-${generation}-${sha}`
+  return `${os}-${arch}-mbx-${generation}-${toolchain}-${sha}`
 }
 
-export function generatedRestoreKey(os: string, arch: string, generation: string): string {
-  return `${os}-${arch}-mbx-${generation}-`
+export function generatedRestoreKey(
+  os: string,
+  arch: string,
+  generation: string,
+  toolchain: string
+): string {
+  return `${os}-${arch}-mbx-${generation}-${toolchain}-`
+}
+
+/**
+ * Cache-key segment naming the Rust toolchain the cache was built by.
+ *
+ * mbx keys every cached compilation on the compiler's identity, so a store
+ * built by one toolchain matches nothing once the toolchain changes — which
+ * happens under a workflow whenever a runner image updates its preinstalled
+ * Rust. Scoping the generated cache key by `rustc -vV` (the same identity
+ * Swatinem/rust-cache keys on) keeps each toolchain's store on its own key
+ * instead of restoring hundreds of megabytes that can no longer match.
+ *
+ * Without a `rustc` on `PATH` the segment is the literal `norust`: the cache
+ * may still hold C/C++ compilations, and a stable fallback keeps those keyed
+ * consistently rather than failing the job.
+ */
+export function toolchainSegment(rustcIdentity: string | null): string {
+  const identity = rustcIdentity?.trim()
+  if (!identity) return 'norust'
+  return `rust-${createHash('sha256').update(identity).digest('hex').slice(0, 12)}`
 }
 
 export function shouldSave(eventName: string, ref: string, defaultBranch?: string | null): boolean {

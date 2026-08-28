@@ -20,6 +20,16 @@ immutable entry only for pushes to the repository's default branch, so pull
 requests—including forks—are restore-only. Before saving, it prunes the store
 to `3GB` by default.
 
+The generated cache key includes the identity of the `rustc` on `PATH`
+(a hash of `rustc -vV`, the same identity Swatinem/rust-cache keys on). mbx
+keys every cached compilation on the compiler, so a store built by one
+toolchain matches nothing under another; scoping the key keeps each toolchain
+on its own cache instead of restoring one that can no longer produce hits—
+which otherwise happens whenever a runner image updates its preinstalled Rust.
+Install your toolchain **before** this action so the key sees the compiler the
+build will use; without a `rustc` on `PATH` the segment is the literal
+`norust`.
+
 On Linux, the action also enables mbx's native link cache. This avoids relinking
 eligible test binaries and executables on a warm build. Set `cache-links: false`
 to opt out, or `cache-links: true` to opt in explicitly on another supported
@@ -41,7 +51,8 @@ fresh:
 ```
 
 `cache-key` and newline-separated `restore-keys` are available when the default
-`${platform}-${architecture}-mbx-${generation}-${commit}` layout is not enough.
+`${platform}-${architecture}-mbx-${generation}-${toolchain}-${commit}` layout
+is not enough.
 
 ## Cache server
 
