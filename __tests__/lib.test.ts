@@ -40,7 +40,7 @@ describe('inputs', () => {
     expect(releaseTarget('linux', 'x64')).toBe('x86_64-unknown-linux-musl')
     expect(releaseTarget('darwin', 'arm64')).toBe('aarch64-apple-darwin')
     expect(releaseTarget('win32', 'x64')).toBe('x86_64-pc-windows-msvc')
-    expect(() => releaseTarget('win32', 'arm64')).toThrow()
+    expect(releaseTarget('win32', 'arm64')).toBe('aarch64-pc-windows-msvc')
   })
 
   it('anchors mutable releases to checksums shipped with the action', () => {

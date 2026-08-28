@@ -4,11 +4,20 @@ import {readFile, writeFile} from 'node:fs/promises'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
 
-const EXPECTED_ASSETS = [
-  'mbx-aarch64-apple-darwin.tar.gz',
-  'mbx-aarch64-unknown-linux-musl.tar.gz',
-  'mbx-x86_64-pc-windows-msvc.zip',
-  'mbx-x86_64-unknown-linux-musl.tar.gz'
+const EXPECTED_ASSET_SETS = [
+  [
+    'mbx-aarch64-apple-darwin.tar.gz',
+    'mbx-aarch64-unknown-linux-musl.tar.gz',
+    'mbx-x86_64-pc-windows-msvc.zip',
+    'mbx-x86_64-unknown-linux-musl.tar.gz'
+  ],
+  [
+    'mbx-aarch64-apple-darwin.tar.gz',
+    'mbx-aarch64-pc-windows-msvc.zip',
+    'mbx-aarch64-unknown-linux-musl.tar.gz',
+    'mbx-x86_64-pc-windows-msvc.zip',
+    'mbx-x86_64-unknown-linux-musl.tar.gz'
+  ]
 ]
 
 const [version, checksumPath] = process.argv.slice(2)
@@ -29,12 +38,10 @@ for (const line of (await readFile(checksumPath, 'utf8')).trim().split('\n')) {
 }
 
 const names = Object.keys(checksums).sort()
-if (JSON.stringify(names) !== JSON.stringify(EXPECTED_ASSETS)) {
+if (!EXPECTED_ASSET_SETS.some(expected => JSON.stringify(names) === JSON.stringify(expected))) {
   throw new Error(`release assets differ from the expected set: ${names.join(', ')}`)
 }
-const releaseDigests = Object.fromEntries(
-  EXPECTED_ASSETS.map(name => [name, checksums[name]])
-)
+const releaseDigests = Object.fromEntries(names.map(name => [name, checksums[name]]))
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const trustPath = path.join(root, 'src', 'trusted-release-digests.json')
