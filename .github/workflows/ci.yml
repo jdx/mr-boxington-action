@@ -38,6 +38,8 @@ jobs:
       - uses: ./
       - run: mbx --version
       - run: mbx cache dir
+      - name: Check native link cache policy
+        run: node -e "if ((process.platform === 'linux') !== (process.env.MBX_CACHE_LINKS === '1')) process.exit(1)"
 
   server:
     runs-on: ubuntu-latest

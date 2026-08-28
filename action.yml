@@ -28,6 +28,9 @@ inputs:
   max-size:
     description: Maximum local cache size before a GitHub cache entry is saved
     default: 3GB
+  cache-links:
+    description: Cache native links; "auto" enables this on Linux
+    default: auto
   server-url:
     description: Base URL for the server backend
     required: false

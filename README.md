@@ -20,6 +20,11 @@ immutable entry only for pushes to the repository's default branch, so pull
 requests—including forks—are restore-only. Before saving, it prunes the store
 to `3GB` by default.
 
+On Linux, the action also enables mbx's native link cache. This avoids relinking
+eligible test binaries and executables on a warm build. Set `cache-links: false`
+to opt out, or `cache-links: true` to opt in explicitly on another supported
+platform.
+
 The action accepts a resolved version only when GitHub reports that release as
 immutable and supplies an asset digest. Release metadata requests use the
 workflow token by default, which requires `contents: read` permission.
@@ -83,6 +88,7 @@ own authorization policy.
 | `github-token` | `${{ github.token }}` | Token used to resolve mbx release metadata |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `max-size` | `3GB` | Store budget applied before save |
+| `cache-links` | `auto` | Cache native links; automatically enabled on Linux |
 | `cache-key` | generated | Complete GitHub cache primary key |
 | `restore-keys` | generated | Newline-separated GitHub restore prefixes |
 | `server-url` | | Required server base URL |
