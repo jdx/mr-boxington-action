@@ -44,7 +44,10 @@ jobs:
       - name: Check the cache key is scoped by toolchain
         env:
           PRIMARY_KEY: ${{ steps.mbx.outputs.cache-primary-key }}
-        run: node -e "if (!/-mbx-[^-]+-(rust-[0-9a-f]{12}|norust)-/.test(process.env.PRIMARY_KEY)) { console.error('unscoped cache key: ' + process.env.PRIMARY_KEY); process.exit(1) }"
+        # A block scalar, because a plain one cannot hold the `: ` this
+        # command's failure message would otherwise put in it.
+        run: |
+          node -e "const k = process.env.PRIMARY_KEY; if (!/-mbx-[^-]+-(rust-[0-9a-f]{12}|norust)-/.test(k)) { console.error('cache key is not scoped by toolchain: ' + k); process.exit(1) }"
       - name: Check native link cache policy
         run: node -e "if ((process.platform === 'linux') !== (process.env.MBX_CACHE_LINKS === '1')) process.exit(1)"
 
