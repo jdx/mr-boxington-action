@@ -51,6 +51,49 @@ jobs:
       - name: Check native link cache policy
         run: node -e "if ((process.platform === 'linux') !== (process.env.MBX_CACHE_LINKS === '1')) process.exit(1)"
 
+  toolchain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # Nightly rather than a pinned release: what needs proving is that the key
+      # follows the named toolchain instead of the default one, which takes a
+      # toolchain whose identity the runner image's default can never happen to
+      # share.
+      - run: rustup toolchain install nightly --profile minimal
+      - id: mbx
+        uses: ./
+        with:
+          toolchain: nightly
+          # Its own generation, so a smoke test that builds nothing never saves
+          # over a key a real build would restore.
+          cache-generation: toolchain-input-ci
+      - name: Check the cache key follows the named toolchain
+        env:
+          PRIMARY_KEY: ${{ steps.mbx.outputs.cache-primary-key }}
+        # A block scalar, because a plain one cannot hold the `: ` these failure
+        # messages put in themselves.
+        run: |
+          node -e "
+          const {createHash} = require('node:crypto');
+          const {execFileSync} = require('node:child_process');
+          const segment = (args) => 'rust-' + createHash('sha256')
+            .update(execFileSync('rustc', args, {encoding: 'utf8'}).trim())
+            .digest('hex').slice(0, 12);
+          const named = segment(['+nightly', '-vV']);
+          const preinstalled = segment(['-vV']);
+          if (named === preinstalled) {
+            console.error('nightly and the default toolchain report one identity, so this proves nothing');
+            process.exit(1);
+          }
+          const key = process.env.PRIMARY_KEY;
+          if (!key.includes(named)) {
+            console.error('cache key does not follow the named toolchain: ' + key);
+            process.exit(1);
+          }
+          "
+
   server:
     runs-on: ubuntu-latest
     steps:
@@ -73,7 +116,7 @@ jobs:
 
   final:
     permissions: {}
-    needs: [action, server, test]
+    needs: [action, server, test, toolchain]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     # Run on success or upstream failure but skip when the workflow is cancelled

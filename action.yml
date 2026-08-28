@@ -25,6 +25,9 @@ inputs:
   cache-generation:
     description: Value included in generated GitHub cache keys; change it to start fresh
     default: v1
+  toolchain:
+    description: Rust toolchain the build names on its own command line, such as "1.91"; the generated cache key follows it instead of the default rustc
+    required: false
   max-size:
     description: Maximum local cache size before a GitHub cache entry is saved
     default: 3GB

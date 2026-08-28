@@ -127,6 +127,25 @@ export function generatedRestoreKey(
 }
 
 /**
+ * `rustc` arguments that probe the identity of the toolchain a build will use.
+ *
+ * Bare `rustc` on `PATH` is rustup's shim, so it already answers for a
+ * `rust-toolchain.toml` or a directory override. What it cannot see is a
+ * toolchain named on the build's own command line — `mbx +1.91 check` compiles
+ * with 1.91 while the shim still reports the default — and keying on the
+ * default there files the 1.91 store under stable's identity, where the two
+ * toolchains share one cache entry and neither restores cleanly.
+ *
+ * The name is the one rustup takes after a `+`, so a caller who writes the
+ * sigil out the way the build spells it means the same toolchain as one who
+ * does not.
+ */
+export function rustcIdentityArgs(toolchain: string): string[] {
+  const name = toolchain.trim().replace(/^\+/, '')
+  return name ? [`+${name}`, '-vV'] : ['-vV']
+}
+
+/**
  * Cache-key segment naming the Rust toolchain the cache was built by.
  *
  * mbx keys every cached compilation on the compiler's identity, so a store

@@ -16,6 +16,7 @@ import {
   normalizedVersion,
   parseBackend,
   releaseTarget,
+  rustcIdentityArgs,
   shouldSave,
   toolchainSegment,
   verifiedReleaseAsset,
@@ -53,10 +54,16 @@ async function capture(command: string, args: string[]): Promise<string> {
   return output.trim()
 }
 
-/** The verbose rustc identity, or null on a runner with no Rust toolchain. */
-async function rustcIdentity(): Promise<string | null> {
+/**
+ * The verbose rustc identity, or null when the toolchain cannot be probed.
+ *
+ * `toolchain` is the empty string unless the caller named one, in which case
+ * that toolchain is asked rather than whichever one `rustc` on `PATH` resolves
+ * to.
+ */
+async function rustcIdentity(toolchain: string): Promise<string | null> {
   try {
-    return await capture('rustc', ['-vV'])
+    return await capture('rustc', rustcIdentityArgs(toolchain))
   } catch (error) {
     core.debug(`rustc identity probe failed: ${String(error)}`)
     return null
@@ -171,12 +178,24 @@ async function main(): Promise<void> {
   const cacheDir = await capture(installed.bin, ['cache', 'dir'])
   await mkdir(cacheDir, {recursive: true})
   const generation = core.getInput('cache-generation')
-  const toolchain = toolchainSegment(await rustcIdentity())
+  const requestedToolchain = core.getInput('toolchain')
+  const toolchain = toolchainSegment(await rustcIdentity(requestedToolchain))
   if (toolchain === 'norust') {
-    core.info(
-      'No rustc found on PATH; the generated cache key carries no toolchain identity. ' +
-        'Install the Rust toolchain before this action so a toolchain update starts a fresh cache.'
-    )
+    // A named toolchain that will not answer is a louder failure than no Rust
+    // at all: the caller has said which compiler the build uses, and keying the
+    // store as if it had none puts it back in the shared bucket the input was
+    // reached for to escape.
+    if (requestedToolchain) {
+      core.warning(
+        `Could not ask the ${requestedToolchain} toolchain for its identity; the generated ` +
+          'cache key carries none. Install that toolchain before this action.'
+      )
+    } else {
+      core.info(
+        'No rustc found on PATH; the generated cache key carries no toolchain identity. ' +
+          'Install the Rust toolchain before this action so a toolchain update starts a fresh cache.'
+      )
+    }
   }
   const sha = context.payload.pull_request?.base.sha ?? context.sha
   const primaryKey =
