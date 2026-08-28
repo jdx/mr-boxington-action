@@ -35,9 +35,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: ./
+      - id: mbx
+        uses: ./
       - run: mbx --version
       - run: mbx cache dir
+      # The toolchain segment is what keeps one toolchain's store off another's
+      # key, so assert the generated key actually carries one on every runner.
+      - name: Check the cache key is scoped by toolchain
+        env:
+          PRIMARY_KEY: ${{ steps.mbx.outputs.cache-primary-key }}
+        # A block scalar, because a plain one cannot hold the `: ` this
+        # command's failure message would otherwise put in it.
+        run: |
+          node -e "const k = process.env.PRIMARY_KEY; if (!/-mbx-[^-]+-(rust-[0-9a-f]{12}|norust)-/.test(k)) { console.error('cache key is not scoped by toolchain: ' + k); process.exit(1) }"
       - name: Check native link cache policy
         run: node -e "if ((process.platform === 'linux') !== (process.env.MBX_CACHE_LINKS === '1')) process.exit(1)"
 

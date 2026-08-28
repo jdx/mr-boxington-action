@@ -9,6 +9,7 @@ import {
   parseBackend,
   releaseTarget,
   shouldSave,
+  toolchainSegment,
   verifiedReleaseAsset
 } from '../src/lib.js'
 
@@ -109,8 +110,31 @@ describe('inputs', () => {
   })
 
   it('generates scoped keys', () => {
-    expect(generatedKey('linux', 'x64', 'v2', 'abc')).toBe('linux-x64-mbx-v2-abc')
-    expect(generatedRestoreKey('linux', 'x64', 'v2')).toBe('linux-x64-mbx-v2-')
+    expect(generatedKey('linux', 'x64', 'v2', 'rust-0123456789ab', 'abc')).toBe(
+      'linux-x64-mbx-v2-rust-0123456789ab-abc'
+    )
+    expect(generatedRestoreKey('linux', 'x64', 'v2', 'rust-0123456789ab')).toBe(
+      'linux-x64-mbx-v2-rust-0123456789ab-'
+    )
+  })
+
+  it('keys each toolchain identity separately', () => {
+    const stable = toolchainSegment('rustc 1.98.0 (88d9e12ae 2026-07-01)\nhost: x86_64-pc-windows-msvc')
+    expect(stable).toMatch(/^rust-[0-9a-f]{12}$/)
+    // Deterministic, so two runs of one toolchain share a key...
+    expect(
+      toolchainSegment('rustc 1.98.0 (88d9e12ae 2026-07-01)\nhost: x86_64-pc-windows-msvc')
+    ).toBe(stable)
+    // ...and a runner-image toolchain bump starts a fresh one.
+    expect(
+      toolchainSegment('rustc 1.97.1 (a1b2c3d4e 2026-05-20)\nhost: x86_64-pc-windows-msvc')
+    ).not.toBe(stable)
+  })
+
+  it('keys a runner without rust on a stable fallback', () => {
+    expect(toolchainSegment(null)).toBe('norust')
+    expect(toolchainSegment('')).toBe('norust')
+    expect(toolchainSegment('  \n')).toBe('norust')
   })
 })
 

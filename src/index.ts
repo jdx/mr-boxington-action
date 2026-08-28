@@ -17,6 +17,7 @@ import {
   parseBackend,
   releaseTarget,
   shouldSave,
+  toolchainSegment,
   verifiedReleaseAsset,
   type GithubRelease,
   type VerifiedReleaseAsset
@@ -50,6 +51,16 @@ async function capture(command: string, args: string[]): Promise<string> {
   })
   if (exitCode !== 0) throw new Error(`${command} exited with code ${exitCode}`)
   return output.trim()
+}
+
+/** The verbose rustc identity, or null on a runner with no Rust toolchain. */
+async function rustcIdentity(): Promise<string | null> {
+  try {
+    return await capture('rustc', ['-vV'])
+  } catch (error) {
+    core.debug(`rustc identity probe failed: ${String(error)}`)
+    return null
+  }
 }
 
 async function resolveRelease(
@@ -160,12 +171,20 @@ async function main(): Promise<void> {
   const cacheDir = await capture(installed.bin, ['cache', 'dir'])
   await mkdir(cacheDir, {recursive: true})
   const generation = core.getInput('cache-generation')
+  const toolchain = toolchainSegment(await rustcIdentity())
+  if (toolchain === 'norust') {
+    core.info(
+      'No rustc found on PATH; the generated cache key carries no toolchain identity. ' +
+        'Install the Rust toolchain before this action so a toolchain update starts a fresh cache.'
+    )
+  }
   const sha = context.payload.pull_request?.base.sha ?? context.sha
   const primaryKey =
-    core.getInput('cache-key') || generatedKey(process.platform, process.arch, generation, sha)
+    core.getInput('cache-key') ||
+    generatedKey(process.platform, process.arch, generation, toolchain, sha)
   const restoreKeys = core.getMultilineInput('restore-keys').filter(Boolean)
   if (restoreKeys.length === 0) {
-    restoreKeys.push(generatedRestoreKey(process.platform, process.arch, generation))
+    restoreKeys.push(generatedRestoreKey(process.platform, process.arch, generation, toolchain))
   }
   const restoredKey = await cache.restoreCache([cacheDir], primaryKey, restoreKeys)
   const hit = restoredKey === primaryKey
