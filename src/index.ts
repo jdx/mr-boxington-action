@@ -15,7 +15,6 @@ import {
   parseBackend,
   releaseTarget,
   shouldSave,
-  trustedReleaseAsset,
   verifiedReleaseAsset,
   type GithubRelease,
   type VerifiedReleaseAsset
@@ -55,10 +54,6 @@ async function resolveRelease(
   requested: string,
   archiveName: string
 ): Promise<VerifiedReleaseAsset> {
-  if (requested !== 'latest') {
-    const trusted = trustedReleaseAsset(requested, archiveName)
-    if (trusted) return trusted
-  }
   const endpoint =
     requested === 'latest'
       ? 'https://api.github.com/repos/jdx/mr-boxington/releases/latest'

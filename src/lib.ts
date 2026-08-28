@@ -1,5 +1,3 @@
-import trustedReleaseDigests from './trusted-release-digests.json'
-
 export type Backend = 'github' | 'server'
 
 export interface CallingCardRow {
@@ -20,11 +18,6 @@ export interface VerifiedReleaseAsset {
   version: string
   sha256: string
 }
-
-// The action itself is the independent trust anchor for releases recorded
-// here, including releases that predate GitHub release immutability.
-const TRUSTED_RELEASE_DIGESTS: Record<string, Record<string, string>> =
-  trustedReleaseDigests
 
 function escapeHtml(value: string): string {
   return value
@@ -59,7 +52,8 @@ export function releaseTarget(platform: NodeJS.Platform, arch: string): string {
     'linux:arm64': 'aarch64-unknown-linux-musl',
     'darwin:x64': 'x86_64-apple-darwin',
     'darwin:arm64': 'aarch64-apple-darwin',
-    'win32:x64': 'x86_64-pc-windows-msvc'
+    'win32:x64': 'x86_64-pc-windows-msvc',
+    'win32:arm64': 'aarch64-pc-windows-msvc'
   }
   const target = targets[`${platform}:${arch}`]
   if (!target) throw new Error(`mbx does not publish a binary for ${platform}/${arch}`)
@@ -75,14 +69,6 @@ export function normalizedVersion(value: string): string {
   return version.replace(/^v/, '')
 }
 
-export function trustedReleaseAsset(
-  version: string,
-  archiveName: string
-): VerifiedReleaseAsset | undefined {
-  const sha256 = TRUSTED_RELEASE_DIGESTS[version]?.[archiveName]
-  return sha256 ? {version, sha256} : undefined
-}
-
 export function verifiedReleaseAsset(
   release: GithubRelease,
   requested: string,
@@ -92,12 +78,8 @@ export function verifiedReleaseAsset(
   if (requested !== 'latest' && version !== requested) {
     throw new Error(`GitHub returned mbx ${version} when ${requested} was requested`)
   }
-  const trusted = trustedReleaseAsset(version, archiveName)
-  if (trusted) return trusted
   if (release.immutable !== true) {
-    throw new Error(
-      `mbx ${version} is not an immutable GitHub release and has no checksum pinned by this action`
-    )
+    throw new Error(`mbx ${version} is not an immutable GitHub release`)
   }
   const asset = release.assets.find(candidate => candidate.name === archiveName)
   const sha256 = asset?.digest?.match(/^sha256:([0-9a-f]{64})$/)?.[1]

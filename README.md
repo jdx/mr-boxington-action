@@ -20,9 +20,8 @@ immutable entry only for pushes to the repository's default branch, so pull
 requests—including forks—are restore-only. Before saving, it prunes the store
 to `3GB` by default.
 
-The action pins the checksum of its default mbx version. Any other resolved
-version—including a newer release selected by `latest`—is accepted only when
-GitHub reports that release as immutable and supplies an asset digest.
+The action accepts a resolved version only when GitHub reports that release as
+immutable and supplies an asset digest.
 
 Change `cache-generation` when a cache-format or policy change should start
 fresh:
