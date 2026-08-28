@@ -3,6 +3,7 @@ import {
   callingCard,
   generatedKey,
   generatedRestoreKey,
+  githubApiHeaders,
   normalizedVersion,
   parseBackend,
   releaseTarget,
@@ -26,6 +27,15 @@ describe('calling card', () => {
 })
 
 describe('inputs', () => {
+  it('authenticates GitHub API requests when a token is available', () => {
+    expect(githubApiHeaders('secret')).toEqual({
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      Authorization: 'Bearer secret'
+    })
+    expect(githubApiHeaders('')).not.toHaveProperty('Authorization')
+  })
+
   it('validates backends and versions', () => {
     expect(parseBackend('github')).toBe('github')
     expect(parseBackend('server')).toBe('server')

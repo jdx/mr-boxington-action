@@ -19,6 +19,15 @@ export interface VerifiedReleaseAsset {
   sha256: string
 }
 
+export function githubApiHeaders(token: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
