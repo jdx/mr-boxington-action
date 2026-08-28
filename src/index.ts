@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto'
 import {chmod, mkdir, readFile} from 'node:fs/promises'
 import path from 'node:path'
 import {
+  cacheLinksValue,
   callingCard,
   type CallingCardRow,
   generatedKey,
@@ -143,6 +144,8 @@ async function main(): Promise<void> {
   core.saveState(POST_STATE, backend)
   core.saveState(MBX_STATE, installed.bin)
   core.saveState(MAX_SIZE_STATE, core.getInput('max-size'))
+  const cacheLinks = cacheLinksValue(core.getInput('cache-links'), process.platform)
+  if (cacheLinks !== undefined) core.exportVariable('MBX_CACHE_LINKS', cacheLinks)
 
   if (backend === 'server') {
     configureServer()

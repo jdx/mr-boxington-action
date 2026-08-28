@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 import {
+  cacheLinksValue,
   callingCard,
   generatedKey,
   generatedRestoreKey,
@@ -43,6 +44,15 @@ describe('inputs', () => {
     expect(normalizedVersion('v0.3.0')).toBe('0.3.0')
     expect(normalizedVersion('latest')).toBe('latest')
     expect(() => normalizedVersion('../main')).toThrow()
+  })
+
+  it('enables native link caching automatically only on Linux', () => {
+    expect(cacheLinksValue('auto', 'linux')).toBe('1')
+    expect(cacheLinksValue('auto', 'darwin')).toBeUndefined()
+    expect(cacheLinksValue('auto', 'win32')).toBeUndefined()
+    expect(cacheLinksValue('true', 'darwin')).toBe('1')
+    expect(cacheLinksValue('false', 'linux')).toBe('0')
+    expect(() => cacheLinksValue('sometimes', 'linux')).toThrow(/cache-links/)
   })
 
   it('selects release targets', () => {

@@ -55,6 +55,13 @@ export function parseBackend(value: string): Backend {
   throw new Error(`backend must be "github" or "server", got ${JSON.stringify(value)}`)
 }
 
+export function cacheLinksValue(value: string, platform: NodeJS.Platform): string | undefined {
+  if (value === 'auto') return platform === 'linux' ? '1' : undefined
+  if (value === 'true') return '1'
+  if (value === 'false') return '0'
+  throw new Error(`cache-links must be "auto", "true", or "false", got ${JSON.stringify(value)}`)
+}
+
 export function releaseTarget(platform: NodeJS.Platform, arch: string): string {
   const targets: Record<string, string> = {
     'linux:x64': 'x86_64-unknown-linux-musl',
