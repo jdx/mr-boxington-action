@@ -30,6 +30,22 @@ Install your toolchain **before** this action so the key sees the compiler the
 build will use; without a `rustc` on `PATH` the segment is the literal
 `norust`.
 
+A build that names its toolchain on its own command line is the one case the
+probe cannot see: `mbx +1.91 check` compiles with 1.91 while `rustc` on `PATH`
+still reports the default, so the 1.91 store lands under the default
+toolchain's key and the two share an entry. Name it with `toolchain` and the
+key follows it:
+
+```yaml
+- uses: jdx/mr-boxington-action@v1
+  with:
+    toolchain: "1.91"
+- run: mbx +1.91 check --workspace
+```
+
+`toolchain` scopes the cache key only — it neither installs the toolchain nor
+selects it for the build.
+
 On Linux, the action also enables mbx's native link cache. This avoids relinking
 eligible test binaries and executables on a warm build. Set `cache-links: false`
 to opt out, or `cache-links: true` to opt in explicitly on another supported

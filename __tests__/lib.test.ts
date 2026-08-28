@@ -8,6 +8,7 @@ import {
   normalizedVersion,
   parseBackend,
   releaseTarget,
+  rustcIdentityArgs,
   shouldSave,
   toolchainSegment,
   verifiedReleaseAsset
@@ -129,6 +130,21 @@ describe('inputs', () => {
     expect(
       toolchainSegment('rustc 1.97.1 (a1b2c3d4e 2026-05-20)\nhost: x86_64-pc-windows-msvc')
     ).not.toBe(stable)
+  })
+
+  it('probes the toolchain the build names, not the default one', () => {
+    expect(rustcIdentityArgs('1.91')).toEqual(['+1.91', '-vV'])
+    // The build spells it `mbx +1.91 check`; either spelling names 1.91 here.
+    expect(rustcIdentityArgs('+1.91')).toEqual(['+1.91', '-vV'])
+    expect(rustcIdentityArgs('nightly-2026-01-15')).toEqual(['+nightly-2026-01-15', '-vV'])
+  })
+
+  it('probes whatever rustup resolves when no toolchain is named', () => {
+    // The shim already honours rust-toolchain.toml, so an unset input must not
+    // become a `+` argument that overrides it.
+    expect(rustcIdentityArgs('')).toEqual(['-vV'])
+    expect(rustcIdentityArgs('  ')).toEqual(['-vV'])
+    expect(rustcIdentityArgs('+')).toEqual(['-vV'])
   })
 
   it('keys a runner without rust on a stable fallback', () => {
