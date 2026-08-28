@@ -114,6 +114,7 @@ own authorization policy.
 | `version` | `latest` | mbx release version, or `latest` |
 | `github-token` | `${{ github.token }}` | Token used to resolve mbx release metadata |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
+| `toolchain` | | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
 | `max-size` | `3GB` | Store budget applied before save |
 | `cache-links` | `auto` | Cache native links; automatically enabled on Linux |
 | `cache-key` | generated | Complete GitHub cache primary key |
