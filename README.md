@@ -114,6 +114,7 @@ own authorization policy.
 | `version` | `latest` | mbx release version, or `latest` |
 | `github-token` | `${{ github.token }}` | Token used to resolve mbx release metadata |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
+| `save-on-workflow-dispatch` | `false` | Save after a successful trusted `workflow_dispatch` run |
 | `toolchain` | | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
 | `max-size` | `3GB` | Store budget applied before save |
 | `cache-links` | `auto` | Cache native links; automatically enabled on Linux |
@@ -125,6 +126,12 @@ own authorization policy.
 | `token` | | Secret bearer token |
 | `token-file` | | Bearer-token file |
 | `server-mode` | `read-write` | Requested remote mode |
+
+`save-on-workflow-dispatch` is intended for explicitly trusted cache-seeding
+and benchmark workflows. Pull request and branch-push runs remain restore-only
+even when the input is set. Pair it with a new `cache-generation` when an mbx
+upgrade changes cache behavior, then measure a later dispatch against the cache
+that first run saved.
 
 ## Outputs
 

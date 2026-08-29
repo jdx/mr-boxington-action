@@ -165,7 +165,13 @@ export function toolchainSegment(rustcIdentity: string | null): string {
   return `rust-${createHash('sha256').update(identity).digest('hex').slice(0, 12)}`
 }
 
-export function shouldSave(eventName: string, ref: string, defaultBranch?: string | null): boolean {
+export function shouldSave(
+  eventName: string,
+  ref: string,
+  defaultBranch?: string | null,
+  saveOnWorkflowDispatch = false
+): boolean {
+  if (eventName === 'workflow_dispatch') return saveOnWorkflowDispatch
   return Boolean(
     eventName === 'push' &&
       defaultBranch &&
