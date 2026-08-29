@@ -128,8 +128,9 @@ own authorization policy.
 | `server-mode` | `read-write` | Requested remote mode |
 
 `save-on-workflow-dispatch` is intended for explicitly trusted cache-seeding
-and benchmark workflows. Pull request and branch-push runs remain restore-only
-even when the input is set. Pair it with a new `cache-generation` when an mbx
+and benchmark workflows. Pull requests and pushes to non-default branches
+remain restore-only even when the input is set. Pair it with a new
+`cache-generation` when an mbx
 upgrade changes cache behavior, then measure a later dispatch against the cache
 that first run saved.
 
