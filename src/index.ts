@@ -8,6 +8,7 @@ import {chmod, mkdir, readFile} from 'node:fs/promises'
 import path from 'node:path'
 import {
   cacheLinksValue,
+  cacheRevision,
   callingCard,
   type CallingCardRow,
   generatedKey,
@@ -197,7 +198,14 @@ async function main(): Promise<void> {
       )
     }
   }
-  const sha = context.payload.pull_request?.base.sha ?? context.sha
+  const saveOnWorkflowDispatch = core.getBooleanInput('save-on-workflow-dispatch')
+  const sha = cacheRevision(
+    context.eventName,
+    context.payload.pull_request?.base.sha ?? context.sha,
+    saveOnWorkflowDispatch,
+    context.runId,
+    context.runAttempt
+  )
   const primaryKey =
     core.getInput('cache-key') ||
     generatedKey(process.platform, process.arch, generation, toolchain, sha)
@@ -220,7 +228,7 @@ async function main(): Promise<void> {
     context.eventName,
     context.ref,
     defaultBranch,
-    core.getBooleanInput('save-on-workflow-dispatch')
+    saveOnWorkflowDispatch
   )
   core.saveState(
     POST_STATE,

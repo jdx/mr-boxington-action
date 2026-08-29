@@ -130,9 +130,9 @@ own authorization policy.
 `save-on-workflow-dispatch` is intended for explicitly trusted cache-seeding
 and benchmark workflows. Pull requests and pushes to non-default branches
 remain restore-only even when the input is set. Pair it with a new
-`cache-generation` when an mbx
-upgrade changes cache behavior, then measure a later dispatch against the cache
-that first run saved.
+`cache-generation` when an mbx upgrade changes cache behavior. Each saving
+dispatch restores the latest compatible cache and writes its learned state to
+a new immutable key for the next dispatch.
 
 ## Outputs
 

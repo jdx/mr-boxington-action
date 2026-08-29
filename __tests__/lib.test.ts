@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest'
 import {
   cacheLinksValue,
+  cacheRevision,
   callingCard,
   generatedKey,
   generatedRestoreKey,
@@ -155,6 +156,14 @@ describe('inputs', () => {
 })
 
 describe('save policy', () => {
+  it('rolls saving dispatches onto a fresh immutable cache key', () => {
+    expect(cacheRevision('workflow_dispatch', 'abc123', true, 42, 3)).toBe(
+      'abc123-run-42-3'
+    )
+    expect(cacheRevision('workflow_dispatch', 'abc123', false, 42, 3)).toBe('abc123')
+    expect(cacheRevision('push', 'abc123', true, 42, 3)).toBe('abc123')
+  })
+
   it('saves only default-branch pushes', () => {
     expect(shouldSave('push', 'refs/heads/main', 'main')).toBe(true)
     expect(shouldSave('pull_request', 'refs/pull/1/merge', 'main')).toBe(false)

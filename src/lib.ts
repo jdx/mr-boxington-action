@@ -165,6 +165,22 @@ export function toolchainSegment(rustcIdentity: string | null): string {
   return `rust-${createHash('sha256').update(identity).digest('hex').slice(0, 12)}`
 }
 
+/**
+ * Give saving dispatches a fresh primary key so GitHub's immutable cache can
+ * preserve state learned after restoring the previous compatible dispatch.
+ */
+export function cacheRevision(
+  eventName: string,
+  sha: string,
+  saveOnWorkflowDispatch: boolean,
+  runId: number,
+  runAttempt: number
+): string {
+  return eventName === 'workflow_dispatch' && saveOnWorkflowDispatch
+    ? `${sha}-run-${runId}-${runAttempt}`
+    : sha
+}
+
 export function shouldSave(
   eventName: string,
   ref: string,
