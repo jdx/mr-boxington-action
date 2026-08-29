@@ -216,7 +216,12 @@ async function main(): Promise<void> {
   core.saveState(CACHE_HIT_STATE, hit ? 'true' : 'false')
   const defaultBranch = (context.payload.repository as {default_branch?: string} | undefined)
     ?.default_branch
-  const save = shouldSave(context.eventName, context.ref, defaultBranch)
+  const save = shouldSave(
+    context.eventName,
+    context.ref,
+    defaultBranch,
+    core.getBooleanInput('save-on-workflow-dispatch')
+  )
   core.saveState(
     POST_STATE,
     save ? 'github-save' : 'github-restore-only'

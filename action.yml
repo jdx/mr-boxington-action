@@ -25,6 +25,9 @@ inputs:
   cache-generation:
     description: Value included in generated GitHub cache keys; change it to start fresh
     default: v1
+  save-on-workflow-dispatch:
+    description: Save the GitHub cache after a successful workflow_dispatch run; enable only in trusted workflows
+    default: "false"
   toolchain:
     description: Rust toolchain the build names on its own command line, such as "1.91"; the generated cache key follows it instead of the default rustc
     required: false

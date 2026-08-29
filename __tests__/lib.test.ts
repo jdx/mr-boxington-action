@@ -159,5 +159,12 @@ describe('save policy', () => {
     expect(shouldSave('push', 'refs/heads/main', 'main')).toBe(true)
     expect(shouldSave('pull_request', 'refs/pull/1/merge', 'main')).toBe(false)
     expect(shouldSave('push', 'refs/heads/topic', 'main')).toBe(false)
+    expect(shouldSave('workflow_dispatch', 'refs/heads/topic', 'main')).toBe(false)
+  })
+
+  it('can opt trusted workflow dispatches into saving', () => {
+    expect(shouldSave('workflow_dispatch', 'refs/heads/benchmark', 'main', true)).toBe(true)
+    expect(shouldSave('pull_request', 'refs/pull/1/merge', 'main', true)).toBe(false)
+    expect(shouldSave('push', 'refs/heads/topic', 'main', true)).toBe(false)
   })
 })
