@@ -16,9 +16,10 @@ steps:
 ```
 
 The default backend restores the action closure from the previous compatible
-build on every run. It saves a new
-immutable entry only for pushes to the repository's default branch, so pull
-requests—including forks—are restore-only.
+build on every run. It saves a new immutable entry for pushes to the
+repository's default branch and, when `save-on-workflow-dispatch` is enabled,
+trusted `workflow_dispatch` runs. Pull requests—including forks—are
+restore-only.
 
 The action imports the restored bundle before any build steps and exports the
 deduplicated closure of every completed `mbx` command in the job afterward.
