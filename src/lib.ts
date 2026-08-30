@@ -126,6 +126,11 @@ export function generatedRestoreKey(
   return `${os}-${arch}-mbx-${generation}-${toolchain}-`
 }
 
+/** The export error that means a job completed without running an mbx build. */
+export function isEmptyExport(output: string): boolean {
+  return output.includes('no completed mbx builds are recorded for export group')
+}
+
 /**
  * `rustc` arguments that probe the identity of the toolchain a build will use.
  *

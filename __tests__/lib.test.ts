@@ -6,6 +6,7 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubApiHeaders,
+  isEmptyExport,
   normalizedVersion,
   parseBackend,
   releaseTarget,
@@ -118,6 +119,13 @@ describe('inputs', () => {
     expect(generatedRestoreKey('linux', 'x64', 'v2', 'rust-0123456789ab')).toBe(
       'linux-x64-mbx-v2-rust-0123456789ab-'
     )
+  })
+
+  it('recognizes an export group with no completed build', () => {
+    expect(
+      isEmptyExport('Error: no completed mbx builds are recorded for export group "ci-123"')
+    ).toBe(true)
+    expect(isEmptyExport('Error: cache export is incomplete or corrupt')).toBe(false)
   })
 
   it('keys each toolchain identity separately', () => {
