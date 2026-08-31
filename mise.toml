@@ -1,0 +1,8 @@
+[tasks.release-plz]
+run = "./scripts/release-plz.sh"
+
+[tools]
+communique = "latest"
+gh = "latest"
+git-cliff = "latest"
+node = "24"

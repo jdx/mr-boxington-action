@@ -1,0 +1,14 @@
+context = """
+mr-boxington-action is a GitHub Action that installs the mr boxington (`mbx`) Rust build cache
+and connects it either to GitHub Actions cache or to an mbx-compatible remote cache server. It
+restores and saves exact build closures, scopes generated keys by Rust toolchain, and configures
+the mbx process environment for the rest of the workflow.
+"""
+
+system_extra = """
+Write for developers using the action in CI. Focus on user-visible behavior, configuration, cache
+correctness, and compatibility. Do not describe internal refactors as new user-facing features.
+"""
+
+[defaults]
+emoji = false
