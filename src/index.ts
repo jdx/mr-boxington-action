@@ -17,6 +17,7 @@ import {
   isEmptyExport,
   normalizedVersion,
   parseBackend,
+  requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
   shouldSave,
@@ -157,6 +158,7 @@ function configureServer(): void {
 
 async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
+  if (backend === 'github') requireGithubCacheRuntime()
   const githubToken = core.getInput('github-token')
   if (githubToken) core.setSecret(githubToken)
   const installed = await installMbx(core.getInput('version'), githubToken)
