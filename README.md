@@ -5,6 +5,12 @@ build cache with either GitHub Actions cache or an mbx-compatible server.
 
 ## Current CI performance
 
+> [!WARNING]
+> mbx does not consistently outperform rust-cache on GitHub-hosted runners.
+> rust-cache won every measured `jdx/hk` job; GitHub-backed mbx won `jdx/mise`
+> on Linux but lost on macOS and Windows. Benchmark the complete job before
+> migrating—the workload and cache transfer size materially affect the result.
+
 mbx does not currently outperform
 [`Swatinem/rust-cache`](https://github.com/Swatinem/rust-cache) in our
 GitHub-hosted runner benchmarks consistently. In a warm-cache comparison for
