@@ -30,6 +30,23 @@ export function githubApiHeaders(token: string): Record<string, string> {
   return headers
 }
 
+export function requireGithubCacheRuntime(env: NodeJS.ProcessEnv = process.env): void {
+  const missing: string[] = []
+  if (!env.ACTIONS_RUNTIME_TOKEN) missing.push('ACTIONS_RUNTIME_TOKEN')
+  if (env.ACTIONS_CACHE_SERVICE_V2) {
+    if (!env.ACTIONS_RESULTS_URL) missing.push('ACTIONS_RESULTS_URL')
+  } else if (!env.ACTIONS_CACHE_URL && !env.ACTIONS_RESULTS_URL) {
+    missing.push('ACTIONS_CACHE_URL or ACTIONS_RESULTS_URL')
+  }
+  if (missing.length === 0) return
+
+  throw new Error(
+    `GitHub Actions cache runtime credentials are unavailable (missing ${missing.join(', ')}). ` +
+      'The GitHub backend must run through a uses: action step; invoking the distribution ' +
+      'bundle from a shell step is unsupported.'
+  )
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')

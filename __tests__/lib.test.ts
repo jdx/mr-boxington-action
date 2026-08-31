@@ -9,6 +9,7 @@ import {
   isEmptyExport,
   normalizedVersion,
   parseBackend,
+  requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
   shouldSave,
@@ -39,6 +40,50 @@ describe('inputs', () => {
       Authorization: 'Bearer secret'
     })
     expect(githubApiHeaders('')).not.toHaveProperty('Authorization')
+  })
+
+  it('requires runtime credentials for GitHub cache service v2', () => {
+    expect(() =>
+      requireGithubCacheRuntime({
+        ACTIONS_CACHE_SERVICE_V2: 'true',
+        ACTIONS_RUNTIME_TOKEN: 'runtime-token',
+        ACTIONS_RESULTS_URL: 'https://results.example.test'
+      })
+    ).not.toThrow()
+    expect(() =>
+      requireGithubCacheRuntime({
+        ACTIONS_CACHE_SERVICE_V2: 'true',
+        ACTIONS_RESULTS_URL: 'https://results.example.test'
+      })
+    ).toThrow(/missing ACTIONS_RUNTIME_TOKEN/)
+    expect(() =>
+      requireGithubCacheRuntime({
+        ACTIONS_CACHE_SERVICE_V2: 'true',
+        ACTIONS_RUNTIME_TOKEN: 'runtime-token'
+      })
+    ).toThrow(/missing ACTIONS_RESULTS_URL/)
+  })
+
+  it('accepts either cache service URL for the legacy client', () => {
+    expect(() =>
+      requireGithubCacheRuntime({
+        ACTIONS_RUNTIME_TOKEN: 'runtime-token',
+        ACTIONS_CACHE_URL: 'https://cache.example.test'
+      })
+    ).not.toThrow()
+    expect(() =>
+      requireGithubCacheRuntime({
+        ACTIONS_RUNTIME_TOKEN: 'runtime-token',
+        ACTIONS_RESULTS_URL: 'https://results.example.test'
+      })
+    ).not.toThrow()
+    expect(() => requireGithubCacheRuntime({ACTIONS_RUNTIME_TOKEN: 'runtime-token'})).toThrow(
+      /ACTIONS_CACHE_URL or ACTIONS_RESULTS_URL/
+    )
+  })
+
+  it('explains that direct bundle invocation is unsupported', () => {
+    expect(() => requireGithubCacheRuntime({})).toThrow(/must run through a uses: action step/)
   })
 
   it('validates backends and versions', () => {
