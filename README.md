@@ -6,44 +6,10 @@ build cache with either GitHub Actions cache or an mbx-compatible server.
 ## Current CI performance
 
 > [!WARNING]
-> mbx does not consistently outperform rust-cache on GitHub-hosted runners.
-> rust-cache won every measured `jdx/hk` job; GitHub-backed mbx won `jdx/mise`
-> on Linux but lost on macOS and Windows. Benchmark the complete job before
-> migrating—the workload and cache transfer size materially affect the result.
-
-mbx does not currently outperform
-[`Swatinem/rust-cache`](https://github.com/Swatinem/rust-cache) in our
-GitHub-hosted runner benchmarks consistently. In a warm-cache comparison for
-[`jdx/hk`](https://github.com/jdx/hk/actions/runs/33395159164), rust-cache
-finished the measured Cargo build substantially sooner on Linux, macOS, and
-Windows. The server-backed mbx runs transferred large action closures and
-could not predict every compilation from a fresh `target/` directory.
-
-The GitHub-cache backend narrowed the gap but did not reverse it. In a
-[separately seeded warm run](https://github.com/jdx/hk/actions/runs/33439934246),
-the measured Cargo builds took 15.54 versus 22.24 seconds on Linux, 24.64
-versus 33.01 seconds on macOS, and 55.65 versus 123 seconds on Windows for
-rust-cache and mbx respectively. Including checkout, cache restore, and action
-setup, the corresponding full jobs took 24 versus 49 seconds, 45 versus 60
-seconds, and 93 versus 183 seconds.
-
-The result depends on the workload. In a
-[warm `jdx/mise` run](https://github.com/jdx/mise/actions/runs/33440683366),
-GitHub-backed mbx beat rust-cache on Linux: 38.79 versus 129 seconds for the
-Cargo build and 97 versus 163 seconds for the full job. It lost on macOS
-(307 versus 207 seconds for Cargo; 379 versus 276 seconds for the job) and
-Windows (737 versus 305 seconds for Cargo; 1,070 versus 392 seconds for the
-job). The Windows mbx job spent 199 seconds restoring and importing its cache
-before Cargo started.
-
-Do not replace rust-cache with this action solely to make GitHub Actions
-faster. The tradeoff can still favor mbx when the same cache should serve
-local worktrees as well as CI, when concurrent builds benefit from shared
-scheduling and in-flight deduplication, when fine-grained reuse across changed
-builds matters more than restoring one target archive, or when detailed
-hit/miss/bypass diagnostics are valuable. A nearby self-hosted remote can also
-change the transfer tradeoff. Benchmark your own workflow before migrating;
-improving fresh-run prediction coverage and transfer cost is active work.
+> mbx performs well for local development. Remote caching works and is
+> actively improving, but does not yet consistently outperform
+> [`Swatinem/rust-cache`](https://github.com/Swatinem/rust-cache) on
+> GitHub-hosted runners. Benchmark your complete workflow before switching.
 
 ## GitHub Actions cache
 
