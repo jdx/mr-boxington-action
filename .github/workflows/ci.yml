@@ -50,6 +50,10 @@ jobs:
           node -e "const k = process.env.PRIMARY_KEY; if (!/-mbx-[^-]+-(rust-[0-9a-f]{12}|norust)-/.test(k)) { console.error('cache key is not scoped by toolchain: ' + k); process.exit(1) }"
       - name: Check native link cache policy
         run: node -e "if ((process.platform === 'linux') !== (process.env.MBX_CACHE_LINKS === '1')) process.exit(1)"
+      # Exercise the same CLI lifecycle used by the action's restore and post
+      # phases. Node keeps the harness identical on bash, macOS, and PowerShell.
+      - name: Round-trip a real build closure
+        run: node .github/e2e/cache-bundle.mjs
 
   toolchain:
     runs-on: ubuntu-latest

@@ -15,10 +15,18 @@ steps:
   - run: mbx test --workspace
 ```
 
-The default backend restores `mbx`'s local store on every run. It saves a new
-immutable entry only for pushes to the repository's default branch, so pull
-requests—including forks—are restore-only. Before saving, it prunes the store
-to `3GB` by default.
+The default backend restores the action closure from the previous compatible
+build on every run. It saves a new immutable entry for pushes to the
+repository's default branch and, when `save-on-workflow-dispatch` is enabled,
+trusted `workflow_dispatch` runs. Pull requests—including forks—are
+restore-only.
+
+The action imports the restored bundle before any build steps and exports the
+deduplicated closure of every completed `mbx` command in the job afterward.
+This keeps GitHub Actions cache entries focused on what the job actually used,
+including warm cache hits, rather than uploading the entire local store. The
+action assigns a unique `MBX_CACHE_EXPORT_GROUP` automatically; workflows do
+not need to set it themselves.
 
 The generated cache key includes the identity of the `rustc` on `PATH`
 (a hash of `rustc -vV`, the same identity Swatinem/rust-cache keys on). mbx
@@ -63,7 +71,6 @@ fresh:
   with:
     version: 0.3.0
     cache-generation: v2
-    max-size: 5GB
 ```
 
 `cache-key` and newline-separated `restore-keys` are available when the default
@@ -116,7 +123,7 @@ own authorization policy.
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `save-on-workflow-dispatch` | `false` | Save after a successful trusted `workflow_dispatch` run |
 | `toolchain` | | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
-| `max-size` | `3GB` | Store budget applied before save |
+| `max-size` | `3GB` | Deprecated; ignored by closure-bundle exports |
 | `cache-links` | `auto` | Cache native links; automatically enabled on Linux |
 | `cache-key` | generated | Complete GitHub cache primary key |
 | `restore-keys` | generated | Newline-separated GitHub restore prefixes |

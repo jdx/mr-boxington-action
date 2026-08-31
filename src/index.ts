@@ -3,7 +3,7 @@ import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import {context} from '@actions/github'
 import * as tc from '@actions/tool-cache'
-import {createHash} from 'node:crypto'
+import {createHash, randomUUID} from 'node:crypto'
 import {chmod, mkdir, readFile} from 'node:fs/promises'
 import path from 'node:path'
 import {
@@ -14,6 +14,7 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubApiHeaders,
+  isEmptyExport,
   normalizedVersion,
   parseBackend,
   releaseTarget,
@@ -26,11 +27,12 @@ import {
 } from './lib.js'
 
 const POST_STATE = 'mbx-post'
-const CACHE_DIR_STATE = 'mbx-cache-dir'
 const CACHE_KEY_STATE = 'mbx-cache-key'
 const CACHE_HIT_STATE = 'mbx-cache-hit'
+const CACHE_ARCHIVE_STATE = 'mbx-cache-archive'
+const CACHE_EXPORT_GROUP_STATE = 'mbx-cache-export-group'
 const MBX_STATE = 'mbx-bin'
-const MAX_SIZE_STATE = 'mbx-max-size'
+const CACHE_ARCHIVE_NAME = 'github-actions-cache-v1.tar'
 
 async function leaveCallingCard(note: string, rows: CallingCardRow[]): Promise<void> {
   try {
@@ -162,7 +164,6 @@ async function main(): Promise<void> {
   core.setOutput('mbx-version', installed.version)
   core.saveState(POST_STATE, backend)
   core.saveState(MBX_STATE, installed.bin)
-  core.saveState(MAX_SIZE_STATE, core.getInput('max-size'))
   const cacheLinks = cacheLinksValue(core.getInput('cache-links'), process.platform)
   if (cacheLinks !== undefined) core.exportVariable('MBX_CACHE_LINKS', cacheLinks)
 
@@ -178,6 +179,9 @@ async function main(): Promise<void> {
 
   const cacheDir = await capture(installed.bin, ['cache', 'dir'])
   await mkdir(cacheDir, {recursive: true})
+  const cacheArchive = path.join(cacheDir, CACHE_ARCHIVE_NAME)
+  const exportGroup = `github-actions-${context.runId}-${context.runAttempt}-${randomUUID()}`
+  core.exportVariable('MBX_CACHE_EXPORT_GROUP', exportGroup)
   const generation = core.getInput('cache-generation')
   const requestedToolchain = core.getInput('toolchain')
   const toolchain = toolchainSegment(await rustcIdentity(requestedToolchain))
@@ -213,13 +217,17 @@ async function main(): Promise<void> {
   if (restoreKeys.length === 0) {
     restoreKeys.push(generatedRestoreKey(process.platform, process.arch, generation, toolchain))
   }
-  const restoredKey = await cache.restoreCache([cacheDir], primaryKey, restoreKeys)
+  const restoredKey = await cache.restoreCache([cacheArchive], primaryKey, restoreKeys)
+  if (restoredKey) {
+    await exec.exec(installed.bin, ['cache', 'import', cacheArchive])
+  }
   const hit = restoredKey === primaryKey
   core.setOutput('cache-hit', hit ? 'true' : 'false')
   core.setOutput('cache-primary-key', primaryKey)
   core.info(restoredKey ? `Restored mbx cache from ${restoredKey}` : 'No mbx cache found')
 
-  core.saveState(CACHE_DIR_STATE, cacheDir)
+  core.saveState(CACHE_ARCHIVE_STATE, cacheArchive)
+  core.saveState(CACHE_EXPORT_GROUP_STATE, exportGroup)
   core.saveState(CACHE_KEY_STATE, primaryKey)
   core.saveState(CACHE_HIT_STATE, hit ? 'true' : 'false')
   const defaultBranch = (context.payload.repository as {default_branch?: string} | undefined)
@@ -255,9 +263,25 @@ async function post(): Promise<void> {
     core.info(`Exact cache ${primaryKey} already exists; not saving it again`)
     return
   }
-  const maxSize = core.getState(MAX_SIZE_STATE)
-  if (maxSize) await exec.exec(core.getState(MBX_STATE), ['gc', '--max-size', maxSize])
-  const cacheId = await cache.saveCache([core.getState(CACHE_DIR_STATE)], primaryKey)
+  const mbx = core.getState(MBX_STATE)
+  const archive = core.getState(CACHE_ARCHIVE_STATE)
+  const group = core.getState(CACHE_EXPORT_GROUP_STATE)
+  let output = ''
+  const exportExitCode = await exec.exec(mbx, ['cache', 'export', '--group', group, archive], {
+    ignoreReturnCode: true,
+    listeners: {
+      stdout: data => (output += data.toString()),
+      stderr: data => (output += data.toString())
+    }
+  })
+  if (exportExitCode !== 0) {
+    if (isEmptyExport(output)) {
+      core.info('No completed mbx build was recorded; not saving an empty cache')
+      return
+    }
+    throw new Error(`mbx cache export exited with code ${exportExitCode}`)
+  }
+  const cacheId = await cache.saveCache([archive], primaryKey)
   core.info(`Saved mbx cache ${primaryKey} (ID ${cacheId})`)
 }
 
