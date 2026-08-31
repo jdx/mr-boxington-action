@@ -13,6 +13,14 @@ finished the measured Cargo build substantially sooner on Linux, macOS, and
 Windows. The server-backed mbx runs transferred large action closures and
 could not predict every compilation from a fresh `target/` directory.
 
+The GitHub-cache backend narrowed the gap but did not reverse it. In a
+[separately seeded warm run](https://github.com/jdx/hk/actions/runs/33439934246),
+the measured Cargo builds took 15.54 versus 22.24 seconds on Linux, 24.64
+versus 33.01 seconds on macOS, and 55.65 versus 123 seconds on Windows for
+rust-cache and mbx respectively. Including checkout, cache restore, and action
+setup, the corresponding full jobs took 24 versus 49 seconds, 45 versus 60
+seconds, and 93 versus 183 seconds.
+
 Do not replace rust-cache with this action solely to make GitHub Actions
 faster. The tradeoff can still favor mbx when the same cache should serve
 local worktrees as well as CI, when concurrent builds benefit from shared
