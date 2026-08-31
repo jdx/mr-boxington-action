@@ -14,10 +14,13 @@ Windows. The server-backed mbx runs transferred large action closures and
 could not predict every compilation from a fresh `target/` directory.
 
 Do not replace rust-cache with this action solely to make GitHub Actions
-faster. mbx may still be useful for worktrees, several concurrent Cargo
-builds, detailed cache diagnostics, and environments that share a suitably
-close remote, but benchmark your own workflow before migrating. Improving
-fresh-run prediction coverage and transfer cost is active work.
+faster. The tradeoff can still favor mbx when the same cache should serve
+local worktrees as well as CI, when concurrent builds benefit from shared
+scheduling and in-flight deduplication, when fine-grained reuse across changed
+builds matters more than restoring one target archive, or when detailed
+hit/miss/bypass diagnostics are valuable. A nearby self-hosted remote can also
+change the transfer tradeoff. Benchmark your own workflow before migrating;
+improving fresh-run prediction coverage and transfer cost is active work.
 
 ## GitHub Actions cache
 
