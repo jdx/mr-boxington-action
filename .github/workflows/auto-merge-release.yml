@@ -1,0 +1,72 @@
+name: auto-merge-release
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: auto-merge-release
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: github.repository == 'jdx/mr-boxington-action'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Merge the release PR
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLZ_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME:-}" != workflow_dispatch ]]; then
+            latest_tag=$(git describe --tags --match 'v[0-9]*' --abbrev=0 || true)
+            if [[ -n "$latest_tag" ]]; then
+              range="${latest_tag}..HEAD"
+              tag_time=$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$latest_tag")
+              age=$(($(date +%s) - tag_time))
+              min_age=$((7 * 24 * 60 * 60))
+              if [[ "$age" -lt "$min_age" ]]; then
+                echo "Latest release $latest_tag is less than seven days old"
+                exit 0
+              fi
+
+              commit_subjects=$(git log --format=%s "$range")
+              if ! grep -Eq '^(fix|feat)(\([^)]+\))?!?: ' <<<"$commit_subjects"; then
+                echo "No pending fix or feature commits since $latest_tag"
+                exit 0
+              fi
+            fi
+          else
+            echo "Manual dispatch skips the release cadence guards"
+          fi
+
+          pr_number=$(gh pr list \
+            --repo jdx/mr-boxington-action \
+            --base main \
+            --head release \
+            --state open \
+            --json number,body,headRefName,headRepositoryOwner \
+            --jq '[.[] | select(.headRefName == "release") | select(.headRepositoryOwner.login == "jdx")][0].number // empty')
+          if [[ -z "$pr_number" ]]; then
+            echo "No open release PR"
+            exit 0
+          fi
+
+          body=$(gh pr view "$pr_number" --repo jdx/mr-boxington-action --json body --jq '.body // ""')
+          if [[ -z "$(tr -d '[:space:]' <<<"$body")" ]]; then
+            echo "Release PR #$pr_number has no body; leaving it for the next run"
+            exit 0
+          fi
+
+          gh pr merge "$pr_number" --repo jdx/mr-boxington-action --squash --auto
