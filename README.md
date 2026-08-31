@@ -3,6 +3,22 @@
 Install [mr boxington](https://github.com/jdx/mr-boxington) and back its Rust
 build cache with either GitHub Actions cache or an mbx-compatible server.
 
+## Current CI performance
+
+mbx is not currently as fast as
+[`Swatinem/rust-cache`](https://github.com/Swatinem/rust-cache) in our
+GitHub-hosted runner benchmarks. In a warm-cache comparison for
+[`jdx/hk`](https://github.com/jdx/hk/actions/runs/33395159164), rust-cache
+finished the measured Cargo build substantially sooner on Linux, macOS, and
+Windows. The server-backed mbx runs transferred large action closures and
+could not predict every compilation from a fresh `target/` directory.
+
+Do not replace rust-cache with this action solely to make GitHub Actions
+faster. mbx may still be useful for worktrees, several concurrent Cargo
+builds, detailed cache diagnostics, and environments that share a suitably
+close remote, but benchmark your own workflow before migrating. Improving
+fresh-run prediction coverage and transfer cost is active work.
+
 ## GitHub Actions cache
 
 ```yaml
