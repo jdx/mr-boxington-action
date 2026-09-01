@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [1.2.0](https://github.com/jdx/mr-boxington-action/compare/v1.1.0..v1.2.0) - 2026-09-01
+
+### 🚀 Features
+
+- use mbx from path when version is omitted (#27) by [@jdx](https://github.com/jdx) in [#27](https://github.com/jdx/mr-boxington-action/pull/27)
+
+### 📚 Documentation
+
+- disclose current CI performance (#23) by [@jdx](https://github.com/jdx) in [#23](https://github.com/jdx/mr-boxington-action/pull/23)
+
+---
 ## [1.1.0](https://github.com/jdx/mr-boxington-action/compare/v1.0.1..v1.1.0) - 2026-08-31
 
 ### 🚀 Features
