@@ -6,6 +6,7 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubApiHeaders,
+  githubTokenValue,
   isEmptyExport,
   mbxReleaseToInstall,
   normalizedVersion,
@@ -42,6 +43,13 @@ describe('inputs', () => {
       Authorization: 'Bearer secret'
     })
     expect(githubApiHeaders('')).not.toHaveProperty('Authorization')
+  })
+
+  it('prefers GITHUB_TOKEN over the action input', () => {
+    expect(githubTokenValue('workflow-token', {GITHUB_TOKEN: 'environment-token'})).toBe(
+      'environment-token'
+    )
+    expect(githubTokenValue('workflow-token', {})).toBe('workflow-token')
   })
 
   it('requires runtime credentials for GitHub cache service v2', () => {

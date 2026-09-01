@@ -14,6 +14,7 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubApiHeaders,
+  githubTokenValue,
   isEmptyExport,
   mbxReleaseToInstall,
   normalizedVersion,
@@ -186,7 +187,7 @@ function configureServer(): void {
 async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
   if (backend === 'github') requireGithubCacheRuntime()
-  const githubToken = core.getInput('github-token')
+  const githubToken = githubTokenValue(core.getInput('github-token'))
   if (githubToken) core.setSecret(githubToken)
   const installed = await setupMbx(core.getInput('version'), githubToken)
   core.info(`Set up mbx ${installed.version}`)

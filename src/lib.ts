@@ -39,6 +39,10 @@ export function githubApiHeaders(token: string): Record<string, string> {
   return headers
 }
 
+export function githubTokenValue(input: string, env: NodeJS.ProcessEnv = process.env): string {
+  return env.GITHUB_TOKEN || input
+}
+
 export function requireGithubCacheRuntime(env: NodeJS.ProcessEnv = process.env): void {
   const missing: string[] = []
   if (!env.ACTIONS_RUNTIME_TOKEN) missing.push('ACTIONS_RUNTIME_TOKEN')

@@ -15,7 +15,7 @@ inputs:
     required: false
   github-token:
     description: GitHub token used to resolve mbx release metadata
-    default: ${{ env.GITHUB_TOKEN || github.token }}
+    default: ${{ github.token }}
   cache-key:
     description: Complete primary key for the GitHub cache backend
     required: false

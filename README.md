@@ -72,7 +72,7 @@ platform.
 
 The action accepts a resolved version only when GitHub reports that release as
 immutable and supplies an asset digest. Release metadata requests use
-`GITHUB_TOKEN` when set and otherwise use the workflow token; either requires
+`GITHUB_TOKEN` when set and otherwise use the `github-token` input; either requires
 `contents: read` permission.
 
 Change `cache-generation` when a cache-format or policy change should start
@@ -131,7 +131,7 @@ own authorization policy.
 | --- | --- | --- |
 | `backend` | `github` | `github` or `server` |
 | `version` | | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH` |
-| `github-token` | `${{ env.GITHUB_TOKEN || github.token }}` | Token used to resolve mbx release metadata |
+| `github-token` | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `save-on-workflow-dispatch` | `false` | Save after a successful trusted `workflow_dispatch` run |
 | `toolchain` | | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
