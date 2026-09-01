@@ -21,6 +21,15 @@ export interface VerifiedReleaseAsset {
   sha256: string
 }
 
+export function parsedMbxVersion(value: string): string | undefined {
+  return value.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/)?.[0]
+}
+
+export function mbxReleaseToInstall(requested: string, foundOnPath: boolean): string | undefined {
+  if (requested) return normalizedVersion(requested)
+  return foundOnPath ? undefined : 'latest'
+}
+
 export function githubApiHeaders(token: string): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github+json',
@@ -28,6 +37,10 @@ export function githubApiHeaders(token: string): Record<string, string> {
   }
   if (token) headers.Authorization = `Bearer ${token}`
   return headers
+}
+
+export function githubTokenValue(input: string, env: NodeJS.ProcessEnv = process.env): string {
+  return env.GITHUB_TOKEN || input
 }
 
 export function requireGithubCacheRuntime(env: NodeJS.ProcessEnv = process.env): void {
@@ -98,7 +111,7 @@ export function releaseTarget(platform: NodeJS.Platform, arch: string): string {
 export function normalizedVersion(value: string): string {
   const version = value.trim()
   if (version === 'latest') return version
-  if (!/^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
+  if (!/^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
     throw new Error(`invalid mbx version ${JSON.stringify(value)}`)
   }
   return version.replace(/^v/, '')

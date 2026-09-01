@@ -6,9 +6,12 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubApiHeaders,
+  githubTokenValue,
   isEmptyExport,
+  mbxReleaseToInstall,
   normalizedVersion,
   parseBackend,
+  parsedMbxVersion,
   requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
@@ -40,6 +43,13 @@ describe('inputs', () => {
       Authorization: 'Bearer secret'
     })
     expect(githubApiHeaders('')).not.toHaveProperty('Authorization')
+  })
+
+  it('prefers GITHUB_TOKEN over the action input', () => {
+    expect(githubTokenValue('workflow-token', {GITHUB_TOKEN: 'environment-token'})).toBe(
+      'environment-token'
+    )
+    expect(githubTokenValue('workflow-token', {})).toBe('workflow-token')
   })
 
   it('requires runtime credentials for GitHub cache service v2', () => {
@@ -93,6 +103,15 @@ describe('inputs', () => {
     expect(normalizedVersion('v0.3.0')).toBe('0.3.0')
     expect(normalizedVersion('latest')).toBe('latest')
     expect(() => normalizedVersion('../main')).toThrow()
+    expect(parsedMbxVersion('mbx 1.3.1')).toBe('1.3.1')
+    expect(parsedMbxVersion('mbx 1.3.1-beta.2+build.4')).toBe('1.3.1-beta.2+build.4')
+    expect(parsedMbxVersion('not a version')).toBeUndefined()
+  })
+
+  it('uses PATH only when no release was requested', () => {
+    expect(mbxReleaseToInstall('', true)).toBeUndefined()
+    expect(mbxReleaseToInstall('', false)).toBe('latest')
+    expect(mbxReleaseToInstall('v1.3.1', true)).toBe('1.3.1')
   })
 
   it('enables native link caching automatically only on Linux', () => {

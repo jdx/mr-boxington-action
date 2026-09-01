@@ -14,9 +14,12 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubApiHeaders,
+  githubTokenValue,
   isEmptyExport,
+  mbxReleaseToInstall,
   normalizedVersion,
   parseBackend,
+  parsedMbxVersion,
   requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
@@ -119,7 +122,7 @@ async function installMbx(
   const extractedBin = path.join(extracted, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
   if (process.platform !== 'win32') await chmod(extractedBin, 0o755)
   const rawVersion = await capture(extractedBin, ['--version'])
-  const installedVersion = rawVersion.match(/\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/)?.[0]
+  const installedVersion = parsedMbxVersion(rawVersion)
   if (!installedVersion) throw new Error(`could not parse mbx version from ${JSON.stringify(rawVersion)}`)
   if (installedVersion !== version) {
     throw new Error(`mbx archive for ${version} contains version ${installedVersion}`)
@@ -130,6 +133,31 @@ async function installMbx(
     bin: path.join(toolDir, process.platform === 'win32' ? 'mbx.exe' : 'mbx'),
     version: installedVersion
   }
+}
+
+async function mbxOnPath(): Promise<{bin: string; version: string} | undefined> {
+  try {
+    const rawVersion = await capture('mbx', ['--version'])
+    const version = parsedMbxVersion(rawVersion)
+    if (!version) throw new Error(`could not parse mbx version from ${JSON.stringify(rawVersion)}`)
+    return {bin: 'mbx', version}
+  } catch (error) {
+    core.debug(`mbx PATH probe failed: ${String(error)}`)
+    return undefined
+  }
+}
+
+async function setupMbx(
+  requested: string,
+  githubToken: string
+): Promise<{bin: string; version: string}> {
+  const found = requested ? undefined : await mbxOnPath()
+  const release = mbxReleaseToInstall(requested, Boolean(found))
+  if (!release && found) {
+    core.info(`Using mbx ${found.version} from PATH`)
+    return found
+  }
+  return installMbx(release ?? 'latest', githubToken)
 }
 
 function configureServer(): void {
@@ -159,10 +187,10 @@ function configureServer(): void {
 async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
   if (backend === 'github') requireGithubCacheRuntime()
-  const githubToken = core.getInput('github-token')
+  const githubToken = githubTokenValue(core.getInput('github-token'))
   if (githubToken) core.setSecret(githubToken)
-  const installed = await installMbx(core.getInput('version'), githubToken)
-  core.info(`Installed mbx ${installed.version}`)
+  const installed = await setupMbx(core.getInput('version'), githubToken)
+  core.info(`Set up mbx ${installed.version}`)
   core.setOutput('mbx-version', installed.version)
   core.saveState(POST_STATE, backend)
   core.saveState(MBX_STATE, installed.bin)
