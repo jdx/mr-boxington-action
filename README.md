@@ -1,7 +1,9 @@
 # mr-boxington-action
 
-Install [mr boxington](https://github.com/jdx/mr-boxington) and back its Rust
-build cache with either GitHub Actions cache or an mbx-compatible server.
+Set up [mr boxington](https://github.com/jdx/mr-boxington) and back its Rust
+build cache with either GitHub Actions cache or an mbx-compatible server. When
+`version` is omitted, the action uses `mbx` from `PATH` and downloads the latest
+release only when it is absent. Setting `version` always installs that release.
 
 ## Current CI performance
 
@@ -69,8 +71,9 @@ to opt out, or `cache-links: true` to opt in explicitly on another supported
 platform.
 
 The action accepts a resolved version only when GitHub reports that release as
-immutable and supplies an asset digest. Release metadata requests use the
-workflow token by default, which requires `contents: read` permission.
+immutable and supplies an asset digest. Release metadata requests use
+`GITHUB_TOKEN` when set and otherwise use the workflow token; either requires
+`contents: read` permission.
 
 Change `cache-generation` when a cache-format or policy change should start
 fresh:
@@ -127,8 +130,8 @@ own authorization policy.
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `backend` | `github` | `github` or `server` |
-| `version` | `latest` | mbx release version, or `latest` |
-| `github-token` | `${{ github.token }}` | Token used to resolve mbx release metadata |
+| `version` | | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH` |
+| `github-token` | `${{ env.GITHUB_TOKEN || github.token }}` | Token used to resolve mbx release metadata |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
 | `save-on-workflow-dispatch` | `false` | Save after a successful trusted `workflow_dispatch` run |
 | `toolchain` | | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |

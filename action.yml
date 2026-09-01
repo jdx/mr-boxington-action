@@ -11,11 +11,11 @@ inputs:
     description: Cache backend, either "github" or "server"
     default: github
   version:
-    description: mbx release version, such as "0.4.0", or "latest"
-    default: latest
+    description: mbx release version to install, such as "0.4.0", or "latest"; when omitted, use mbx from PATH or install latest
+    required: false
   github-token:
     description: GitHub token used to resolve mbx release metadata
-    default: ${{ github.token }}
+    default: ${{ env.GITHUB_TOKEN || github.token }}
   cache-key:
     description: Complete primary key for the GitHub cache backend
     required: false
