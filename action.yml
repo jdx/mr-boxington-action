@@ -1,5 +1,5 @@
 name: mr boxington
-description: Set up mbx with GitHub Actions cache or an mbx cache server
+description: Set up mbx with local storage, GitHub Actions cache, or an mbx cache server
 author: jdx
 
 branding:
@@ -8,7 +8,7 @@ branding:
 
 inputs:
   backend:
-    description: Cache backend, either "github" or "server"
+    description: Cache backend, either "local", "github", or "server"
     default: github
   version:
     description: mbx release version to install, such as "0.4.0", or "latest"; when omitted, use mbx from PATH or install latest

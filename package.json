@@ -2,7 +2,7 @@
   "name": "mr-boxington-action",
   "version": "1.2.0",
   "private": true,
-  "description": "Set up mr boxington with GitHub Actions cache or a remote cache server",
+  "description": "Set up mr boxington with local storage, GitHub Actions cache, or a remote cache server",
   "main": "dist/index.js",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.js --minify",

@@ -97,6 +97,7 @@ describe('inputs', () => {
   })
 
   it('validates backends and versions', () => {
+    expect(parseBackend('local')).toBe('local')
     expect(parseBackend('github')).toBe('github')
     expect(parseBackend('server')).toBe('server')
     expect(() => parseBackend('s3')).toThrow()
