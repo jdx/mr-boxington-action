@@ -9,13 +9,14 @@ release only when it is absent. Setting `version` always installs that release.
 
 ```yaml
 steps:
+  - uses: actions/checkout@v7
   - uses: jdx/mr-boxington-action@v1
     with:
       backend: local
   - run: mbx test --workspace
 ```
 
-The local backend installs mbx and leaves its store on the filesystem without
+The local backend installs or reuses mbx and leaves its store on the filesystem without
 configuring a remote transport or an upload/download phase. This is useful on
 persistent runners and with volume actions that mount mbx's cache directory.
 
@@ -141,24 +142,24 @@ own authorization policy.
 
 ## Inputs
 
-| Input | Default | Purpose |
-| --- | --- | --- |
-| `backend` | `github` | `local`, `github`, or `server` |
-| `version` | | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH` |
-| `github-token` | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported |
-| `cache-generation` | `v1` | Generated GitHub cache key generation |
-| `save-on-workflow-dispatch` | `false` | Save after a successful trusted `workflow_dispatch` run |
-| `toolchain` | | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
-| `max-size` | `3GB` | Deprecated; ignored by closure-bundle exports |
-| `cache-links` | `auto` | Cache native links; automatically enabled on Linux |
-| `cache-key` | generated | Complete GitHub cache primary key |
-| `restore-keys` | generated | Newline-separated GitHub restore prefixes |
-| `server-url` | | Required server base URL |
-| `namespace` | | Required server namespace |
-| `oidc-audience` | | OIDC audience |
-| `token` | | Secret bearer token |
-| `token-file` | | Bearer-token file |
-| `server-mode` | `read-write` | Requested remote mode |
+| Input                       | Default               | Purpose                                                                        |
+| --------------------------- | --------------------- | ------------------------------------------------------------------------------ |
+| `backend`                   | `github`              | `local`, `github`, or `server`                                                 |
+| `version`                   |                       | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH`       |
+| `github-token`              | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported                                 |
+| `cache-generation`          | `v1`                  | Generated GitHub cache key generation                                          |
+| `save-on-workflow-dispatch` | `false`               | Save after a successful trusted `workflow_dispatch` run                        |
+| `toolchain`                 |                       | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
+| `max-size`                  | `3GB`                 | Deprecated; ignored by closure-bundle exports                                  |
+| `cache-links`               | `auto`                | Cache native links; automatically enabled on Linux                             |
+| `cache-key`                 | generated             | Complete GitHub cache primary key                                              |
+| `restore-keys`              | generated             | Newline-separated GitHub restore prefixes                                      |
+| `server-url`                |                       | Required server base URL                                                       |
+| `namespace`                 |                       | Required server namespace                                                      |
+| `oidc-audience`             |                       | OIDC audience                                                                  |
+| `token`                     |                       | Secret bearer token                                                            |
+| `token-file`                |                       | Bearer-token file                                                              |
+| `server-mode`               | `read-write`          | Requested remote mode                                                          |
 
 `save-on-workflow-dispatch` is intended for explicitly trusted cache-seeding
 and benchmark workflows. Pull requests and pushes to non-default branches
