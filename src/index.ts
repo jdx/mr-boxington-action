@@ -197,6 +197,18 @@ async function main(): Promise<void> {
   const cacheLinks = cacheLinksValue(core.getInput('cache-links'), process.platform)
   if (cacheLinks !== undefined) core.exportVariable('MBX_CACHE_LINKS', cacheLinks)
 
+  if (backend === 'local') {
+    core.exportVariable('MBX_REMOTE_URL', '')
+    const cacheDir = await capture(installed.bin, ['cache', 'dir'])
+    await mkdir(cacheDir, {recursive: true})
+    await leaveCallingCard('Everything is being kept on the premises.', [
+      {label: 'mbx', value: installed.version},
+      {label: 'Backend', value: 'local filesystem'},
+      {label: 'Cache', value: cacheDir}
+    ])
+    return
+  }
+
   if (backend === 'server') {
     configureServer()
     await leaveCallingCard('I have made the necessary arrangements.', [

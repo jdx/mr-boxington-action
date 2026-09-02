@@ -1,9 +1,23 @@
 # mr-boxington-action
 
-Set up [mr boxington](https://github.com/jdx/mr-boxington) and back its Rust
-build cache with either GitHub Actions cache or an mbx-compatible server. When
+Set up [mr boxington](https://github.com/jdx/mr-boxington) and use its local
+store directly or back it with GitHub Actions cache or an mbx-compatible server. When
 `version` is omitted, the action uses `mbx` from `PATH` and downloads the latest
 release only when it is absent. Setting `version` always installs that release.
+
+## Local filesystem
+
+```yaml
+steps:
+  - uses: jdx/mr-boxington-action@v1
+    with:
+      backend: local
+  - run: mbx test --workspace
+```
+
+The local backend installs mbx and leaves its store on the filesystem without
+configuring a remote transport or an upload/download phase. This is useful on
+persistent runners and with volume actions that mount mbx's cache directory.
 
 ## Current CI performance
 
@@ -129,7 +143,7 @@ own authorization policy.
 
 | Input | Default | Purpose |
 | --- | --- | --- |
-| `backend` | `github` | `github` or `server` |
+| `backend` | `github` | `local`, `github`, or `server` |
 | `version` | | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH` |
 | `github-token` | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported |
 | `cache-generation` | `v1` | Generated GitHub cache key generation |
