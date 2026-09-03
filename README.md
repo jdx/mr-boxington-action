@@ -150,7 +150,6 @@ own authorization policy.
 | `cache-generation`          | `v1`                  | Generated GitHub cache key generation                                          |
 | `save-on-workflow-dispatch` | `false`               | Save after a successful trusted `workflow_dispatch` run                        |
 | `toolchain`                 |                       | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
-| `max-size`                  | `3GB`                 | Deprecated; ignored by closure-bundle exports                                  |
 | `cache-links`               | `auto`                | Cache native links; automatically enabled on Linux                             |
 | `cache-key`                 | generated             | Complete GitHub cache primary key                                              |
 | `restore-keys`              | generated             | Newline-separated GitHub restore prefixes                                      |

@@ -31,9 +31,6 @@ inputs:
   toolchain:
     description: Rust toolchain the build names on its own command line, such as "1.91"; the generated cache key follows it instead of the default rustc
     required: false
-  max-size:
-    description: Deprecated; closure bundles contain only actions used by the current job
-    default: 3GB
   cache-links:
     description: Cache native links; "auto" enables this on Linux
     default: auto
