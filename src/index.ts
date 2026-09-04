@@ -4,13 +4,14 @@ import * as exec from '@actions/exec'
 import {context} from '@actions/github'
 import * as tc from '@actions/tool-cache'
 import {createHash, randomUUID} from 'node:crypto'
-import {access, chmod, mkdir, readFile} from 'node:fs/promises'
+import {access, chmod, copyFile, mkdir, readFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {homedir} from 'node:os'
 import path from 'node:path'
 import {
   cacheLinksValue,
   cacheRevision,
+  canReuseCachedMbx,
   callingCard,
   type CallingCardRow,
   generatedKey,
@@ -48,6 +49,12 @@ const CACHE_EXPORT_GROUP_STATE = 'mbx-cache-export-group'
 const CACHE_PATHS_STATE = 'mbx-cache-paths'
 const MBX_STATE = 'mbx-bin'
 const CACHE_ARCHIVE_NAME = 'github-actions-cache-v1.tar'
+const TARGET_TOOL_DIRECTORY = 'mbx-target-tool'
+
+interface MbxInstallation {
+  bin: string
+  version: string
+}
 
 async function leaveCallingCard(note: string, rows: CallingCardRow[]): Promise<void> {
   try {
@@ -110,7 +117,7 @@ async function resolveRelease(
 async function installMbx(
   requested: string,
   githubToken: string
-): Promise<{bin: string; version: string}> {
+): Promise<MbxInstallation> {
   const requestedVersion = normalizedVersion(requested)
   const target = releaseTarget(process.platform, process.arch)
   const extension = process.platform === 'win32' ? 'zip' : 'tar.gz'
@@ -146,7 +153,7 @@ async function installMbx(
   }
 }
 
-async function mbxOnPath(): Promise<{bin: string; version: string} | undefined> {
+async function mbxOnPath(): Promise<MbxInstallation | undefined> {
   try {
     const names =
       process.platform === 'win32'
@@ -177,15 +184,45 @@ async function mbxOnPath(): Promise<{bin: string; version: string} | undefined> 
 
 async function setupMbx(
   requested: string,
-  githubToken: string
-): Promise<{bin: string; version: string}> {
+  githubToken: string,
+  cachedDirectory = ''
+): Promise<MbxInstallation> {
   const found = requested ? undefined : await mbxOnPath()
   const release = mbxReleaseToInstall(requested, Boolean(found))
   if (!release && found) {
     core.info(`Using mbx ${found.version} from PATH`)
     return found
   }
+  if (cachedDirectory && release && release !== 'latest') {
+    const cached = path.join(cachedDirectory, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
+    try {
+      await access(cached, constants.X_OK)
+      const version = parsedMbxVersion(await capture(cached, ['--version']))
+      if (version && canReuseCachedMbx(release, version)) {
+        core.info(`Using mbx ${version} from the restored target cache`)
+        core.addPath(cachedDirectory)
+        return {bin: cached, version}
+      }
+      core.debug(`Ignoring cached mbx ${version ?? 'with an unknown version'}; ${release} was requested`)
+    } catch (error) {
+      core.debug(`Cached mbx probe failed: ${String(error)}`)
+    }
+  }
   return installMbx(release ?? 'latest', githubToken)
+}
+
+async function stageTargetCacheMbx(
+  installed: MbxInstallation,
+  directory: string
+): Promise<MbxInstallation> {
+  const bin = path.join(directory, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
+  if (path.resolve(installed.bin) !== path.resolve(bin)) {
+    await mkdir(directory, {recursive: true})
+    await copyFile(installed.bin, bin)
+    if (process.platform !== 'win32') await chmod(bin, 0o755)
+  }
+  core.addPath(directory)
+  return {...installed, bin}
 }
 
 function configureServer(): void {
@@ -215,21 +252,23 @@ function configureServer(): void {
 async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
   const githubCacheMode = parseGithubCacheMode(core.getInput('github-cache-mode'))
+  const targetCache = backend === 'github' && githubCacheMode === 'target'
   if (backend === 'github') requireGithubCacheRuntime()
   const githubToken = githubTokenValue(core.getInput('github-token'))
   if (githubToken) core.setSecret(githubToken)
-  const installed = await setupMbx(core.getInput('version'), githubToken)
-  core.info(`Set up mbx ${installed.version}`)
-  core.setOutput('mbx-version', installed.version)
-  core.saveState(POST_STATE, backend)
-  core.saveState(MBX_STATE, installed.bin)
+  let installed = targetCache ? undefined : await setupMbx(core.getInput('version'), githubToken)
   const cacheLinks =
-    backend === 'github' && githubCacheMode === 'target'
+    targetCache
       ? '0'
       : cacheLinksValue(core.getInput('cache-links'), process.platform)
   if (cacheLinks !== undefined) core.exportVariable('MBX_CACHE_LINKS', cacheLinks)
 
   if (backend === 'local') {
+    if (!installed) throw new Error('mbx setup did not complete')
+    core.info(`Set up mbx ${installed.version}`)
+    core.setOutput('mbx-version', installed.version)
+    core.saveState(POST_STATE, backend)
+    core.saveState(MBX_STATE, installed.bin)
     core.exportVariable('MBX_REMOTE_URL', '')
     const cacheDir = await capture(installed.bin, ['cache', 'dir'])
     await mkdir(cacheDir, {recursive: true})
@@ -242,6 +281,11 @@ async function main(): Promise<void> {
   }
 
   if (backend === 'server') {
+    if (!installed) throw new Error('mbx setup did not complete')
+    core.info(`Set up mbx ${installed.version}`)
+    core.setOutput('mbx-version', installed.version)
+    core.saveState(POST_STATE, backend)
+    core.saveState(MBX_STATE, installed.bin)
     configureServer()
     await leaveCallingCard('I have made the necessary arrangements.', [
       {label: 'mbx', value: installed.version},
@@ -253,6 +297,7 @@ async function main(): Promise<void> {
 
   let cacheArchive = ''
   if (githubCacheMode === 'objects') {
+    if (!installed) throw new Error('mbx setup did not complete')
     const cacheDir = await capture(installed.bin, ['cache', 'dir'])
     await mkdir(cacheDir, {recursive: true})
     cacheArchive = path.join(cacheDir, CACHE_ARCHIVE_NAME)
@@ -302,13 +347,29 @@ async function main(): Promise<void> {
     restoreKeys.push(generatedRestoreKey(process.platform, process.arch, generation, toolchain))
   }
   const cargoHome = process.env.CARGO_HOME || path.join(homedir(), '.cargo')
+  const targetToolDirectory = path.join(
+    process.env.RUNNER_TEMP || path.join(homedir(), '.cache'),
+    TARGET_TOOL_DIRECTORY
+  )
   const targetPaths = [
     path.resolve('target'),
     path.join(cargoHome, 'registry'),
-    path.join(cargoHome, 'git')
+    path.join(cargoHome, 'git'),
+    targetToolDirectory
   ]
   const cachePaths = githubCacheMode === 'target' ? targetPaths : [cacheArchive]
   const restoredKey = await cache.restoreCache(cachePaths, primaryKey, restoreKeys)
+  if (targetCache) {
+    installed = await stageTargetCacheMbx(
+      await setupMbx(core.getInput('version'), githubToken, targetToolDirectory),
+      targetToolDirectory
+    )
+  }
+  if (!installed) throw new Error('mbx setup did not complete')
+  core.info(`Set up mbx ${installed.version}`)
+  core.setOutput('mbx-version', installed.version)
+  core.saveState(POST_STATE, backend)
+  core.saveState(MBX_STATE, installed.bin)
   if (restoredKey && githubCacheMode === 'objects') {
     await exec.exec(installed.bin, ['cache', 'import', cacheArchive])
   } else if (restoredKey && githubCacheMode === 'target') {

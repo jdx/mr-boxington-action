@@ -125,6 +125,12 @@ export function normalizedVersion(value: string): string {
   return version.replace(/^v/, '')
 }
 
+/** A pinned release can be reused without asking GitHub whether "latest" moved. */
+export function canReuseCachedMbx(requested: string, installed: string | undefined): boolean {
+  const version = normalizedVersion(requested)
+  return version !== 'latest' && installed === version
+}
+
 export function verifiedReleaseAsset(
   release: GithubRelease,
   requested: string,

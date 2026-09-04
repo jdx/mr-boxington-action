@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest'
 import {
   cacheLinksValue,
   cacheRevision,
+  canReuseCachedMbx,
   callingCard,
   generatedKey,
   generatedRestoreKey,
@@ -118,6 +119,12 @@ describe('inputs', () => {
     expect(mbxReleaseToInstall('', true)).toBeUndefined()
     expect(mbxReleaseToInstall('', false)).toBe('latest')
     expect(mbxReleaseToInstall('v1.3.1', true)).toBe('1.3.1')
+  })
+
+  it('reuses only the exact pinned mbx release from a target cache', () => {
+    expect(canReuseCachedMbx('v1.8.0', '1.8.0')).toBe(true)
+    expect(canReuseCachedMbx('1.8.0', '1.7.0')).toBe(false)
+    expect(canReuseCachedMbx('latest', '1.8.0')).toBe(false)
   })
 
   it('enables native link caching automatically only on Linux', () => {
