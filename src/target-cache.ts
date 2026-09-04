@@ -1,5 +1,7 @@
-import {chmod, copyFile, readdir, rm, stat} from 'node:fs/promises'
+import {chmod, copyFile, open, readdir, rm, stat} from 'node:fs/promises'
 import path from 'node:path'
+
+const BUILD_SCRIPT_REAL_SUFFIX = '.mbx-real'
 
 interface CargoMetadata {
   packages: {
@@ -143,12 +145,58 @@ async function visitShimDirectories(
   }
 }
 
+async function visitBuildScriptShims(
+  directory: string,
+  visitor: (shim: string) => Promise<void>
+): Promise<void> {
+  if (!(await directoryExists(directory))) return
+  for (const entry of await readdir(directory, {withFileTypes: true})) {
+    const child = path.join(directory, entry.name)
+    if (entry.isFile() && entry.name.endsWith(BUILD_SCRIPT_REAL_SUFFIX)) {
+      await visitor(child.slice(0, -BUILD_SCRIPT_REAL_SUFFIX.length))
+    } else if (
+      entry.isDirectory() &&
+      !['.fingerprint', 'deps', '.mbx-build-script-shims'].includes(entry.name)
+    ) {
+      await visitBuildScriptShims(child, visitor)
+    }
+  }
+}
+
+async function isShellLauncher(file: string): Promise<boolean> {
+  try {
+    const handle = await open(file, 'r')
+    try {
+      const prefix = Buffer.alloc(2)
+      const {bytesRead} = await handle.read(prefix, 0, prefix.length, 0)
+      return bytesRead === prefix.length && prefix.equals(Buffer.from('#!'))
+    } finally {
+      await handle.close()
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+    throw error
+  }
+}
+
 export async function dehydrateMbxShimBinaries(targetDirectory: string): Promise<number> {
   let removed = 0
   await visitShimDirectories(targetDirectory, async shimDirectory => {
     const binary = path.join(shimDirectory, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
     try {
       await rm(binary)
+      removed += 1
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  })
+  // mbx releases before the shared Unix launcher put a complete mbx binary at
+  // every Cargo build-script path. The preserved `.mbx-real` sibling identifies
+  // those paths without guessing names. Keep newer tiny shell launchers intact.
+  await visitBuildScriptShims(targetDirectory, async shim => {
+    if (await isShellLauncher(shim)) return
+    try {
+      await rm(shim)
       removed += 1
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -166,6 +214,17 @@ export async function hydrateMbxShimBinaries(
     const binary = path.join(shimDirectory, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
     await copyFile(sourceBinary, binary)
     if (process.platform !== 'win32') await chmod(binary, 0o755)
+    hydrated += 1
+  })
+  await visitBuildScriptShims(targetDirectory, async shim => {
+    try {
+      await stat(shim)
+      return
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    await copyFile(sourceBinary, shim)
+    if (process.platform !== 'win32') await chmod(shim, 0o755)
     hydrated += 1
   })
   return hydrated

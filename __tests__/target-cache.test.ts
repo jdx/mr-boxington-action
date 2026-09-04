@@ -119,4 +119,26 @@ describe('target cache pruning', () => {
     await expect(hydrateMbxShimBinaries(target, source)).resolves.toBe(1)
     await expect(readFile(shim, 'utf8')).resolves.toBe('current mbx')
   })
+
+  it('omits legacy copied build-script shims but preserves tiny launchers', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'mbx-target-legacy-shims-'))
+    const target = path.join(root, 'target')
+    const source = path.join(root, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
+    const legacy = path.join(target, 'debug', 'build', 'legacy-hash', 'build-script-build')
+    const launcher = path.join(target, 'debug', 'build', 'current-hash', 'build-script-build')
+    for (const shim of [legacy, launcher]) {
+      await mkdir(path.dirname(shim), {recursive: true})
+      await writeFile(`${shim}.mbx-real`, 'compiled build script')
+    }
+    await writeFile(source, 'current mbx')
+    await writeFile(legacy, 'copied mbx executable')
+    await writeFile(launcher, '#!/bin/sh\nexec mbx "$@"\n')
+
+    await expect(dehydrateMbxShimBinaries(target)).resolves.toBe(1)
+    await expect(readFile(legacy, 'utf8')).rejects.toThrow()
+    await expect(readFile(launcher, 'utf8')).resolves.toMatch(/^#!\/bin\/sh/)
+    await expect(hydrateMbxShimBinaries(target, source)).resolves.toBe(1)
+    await expect(readFile(legacy, 'utf8')).resolves.toBe('current mbx')
+    await expect(readFile(launcher, 'utf8')).resolves.toMatch(/^#!\/bin\/sh/)
+  })
 })
