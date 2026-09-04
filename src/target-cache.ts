@@ -1,4 +1,4 @@
-import {readdir, rm, stat} from 'node:fs/promises'
+import {chmod, copyFile, readdir, rm, stat} from 'node:fs/promises'
 import path from 'node:path'
 
 interface CargoMetadata {
@@ -100,6 +100,52 @@ async function pruneSparseIndex(directory: string, keep: Set<string>): Promise<b
     }
   }
   return empty
+}
+
+async function visitShimDirectories(
+  directory: string,
+  visitor: (shimDirectory: string) => Promise<void>
+): Promise<void> {
+  if (!(await directoryExists(directory))) return
+  for (const entry of await readdir(directory, {withFileTypes: true})) {
+    if (!entry.isDirectory()) continue
+    const child = path.join(directory, entry.name)
+    if (entry.name === '.mbx-build-script-shims') {
+      for (const identity of await readdir(child, {withFileTypes: true})) {
+        if (identity.isDirectory()) await visitor(path.join(child, identity.name))
+      }
+    } else if (!['build', '.fingerprint', 'deps'].includes(entry.name)) {
+      await visitShimDirectories(child, visitor)
+    }
+  }
+}
+
+export async function dehydrateMbxShimBinaries(targetDirectory: string): Promise<number> {
+  let removed = 0
+  await visitShimDirectories(targetDirectory, async shimDirectory => {
+    const binary = path.join(shimDirectory, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
+    try {
+      await rm(binary)
+      removed += 1
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  })
+  return removed
+}
+
+export async function hydrateMbxShimBinaries(
+  targetDirectory: string,
+  sourceBinary: string
+): Promise<number> {
+  let hydrated = 0
+  await visitShimDirectories(targetDirectory, async shimDirectory => {
+    const binary = path.join(shimDirectory, process.platform === 'win32' ? 'mbx.exe' : 'mbx')
+    await copyFile(sourceBinary, binary)
+    if (process.platform !== 'win32') await chmod(binary, 0o755)
+    hydrated += 1
+  })
+  return hydrated
 }
 
 export async function pruneCargoTargetCache(

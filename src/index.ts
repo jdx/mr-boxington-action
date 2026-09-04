@@ -4,7 +4,8 @@ import * as exec from '@actions/exec'
 import {context} from '@actions/github'
 import * as tc from '@actions/tool-cache'
 import {createHash, randomUUID} from 'node:crypto'
-import {chmod, mkdir, readFile} from 'node:fs/promises'
+import {access, chmod, mkdir, readFile} from 'node:fs/promises'
+import {constants} from 'node:fs'
 import {homedir} from 'node:os'
 import path from 'node:path'
 import {
@@ -31,7 +32,11 @@ import {
   type GithubRelease,
   type VerifiedReleaseAsset
 } from './lib.js'
-import {pruneCargoTargetCache} from './target-cache.js'
+import {
+  dehydrateMbxShimBinaries,
+  hydrateMbxShimBinaries,
+  pruneCargoTargetCache
+} from './target-cache.js'
 
 const POST_STATE = 'mbx-post'
 const CACHE_KEY_STATE = 'mbx-cache-key'
@@ -141,10 +146,27 @@ async function installMbx(
 
 async function mbxOnPath(): Promise<{bin: string; version: string} | undefined> {
   try {
-    const rawVersion = await capture('mbx', ['--version'])
+    const names =
+      process.platform === 'win32'
+        ? (process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM').split(';').map(extension => `mbx${extension}`)
+        : ['mbx']
+    let bin = ''
+    for (const directory of (process.env.PATH || '').split(path.delimiter)) {
+      for (const name of names) {
+        const candidate = path.resolve(directory, name)
+        try {
+          await access(candidate, constants.X_OK)
+          bin = candidate
+          break
+        } catch {}
+      }
+      if (bin) break
+    }
+    if (!bin) throw new Error('mbx was not found on PATH')
+    const rawVersion = await capture(bin, ['--version'])
     const version = parsedMbxVersion(rawVersion)
     if (!version) throw new Error(`could not parse mbx version from ${JSON.stringify(rawVersion)}`)
-    return {bin: 'mbx', version}
+    return {bin, version}
   } catch (error) {
     core.debug(`mbx PATH probe failed: ${String(error)}`)
     return undefined
@@ -288,6 +310,9 @@ async function main(): Promise<void> {
   const restoredKey = await cache.restoreCache(cachePaths, primaryKey, restoreKeys)
   if (restoredKey && githubCacheMode === 'objects') {
     await exec.exec(installed.bin, ['cache', 'import', cacheArchive])
+  } else if (restoredKey && githubCacheMode === 'target') {
+    const hydrated = await hydrateMbxShimBinaries(path.resolve('target'), installed.bin)
+    if (hydrated > 0) core.info(`Restored ${hydrated} shared mbx build-script shim binaries`)
   }
   const hit = restoredKey === primaryKey
   core.setOutput('cache-hit', hit ? 'true' : 'false')
@@ -342,6 +367,8 @@ async function post(): Promise<void> {
     const metadata = await capture('cargo', ['metadata', '--format-version', '1'])
     const cargoHome = process.env.CARGO_HOME || path.join(homedir(), '.cargo')
     await pruneCargoTargetCache(path.resolve('target'), cargoHome, metadata)
+    const dehydrated = await dehydrateMbxShimBinaries(path.resolve('target'))
+    if (dehydrated > 0) core.info(`Omitted ${dehydrated} shared mbx build-script shim binaries`)
     const cacheId = await cache.saveCache(paths, primaryKey)
     core.info(`Saved mbx target cache ${primaryKey} (ID ${cacheId})`)
     return

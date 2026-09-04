@@ -2,7 +2,13 @@ import {mkdtemp, mkdir, readFile, writeFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import path from 'node:path'
 import {describe, expect, it} from 'vitest'
-import {cargoKeepSets, matchesCargoEntry, pruneCargoTargetCache} from '../src/target-cache.js'
+import {
+  cargoKeepSets,
+  dehydrateMbxShimBinaries,
+  hydrateMbxShimBinaries,
+  matchesCargoEntry,
+  pruneCargoTargetCache
+} from '../src/target-cache.js'
 
 const metadata = JSON.stringify({
   packages: [
@@ -81,5 +87,23 @@ describe('target cache pruning', () => {
     await expect(
       readFile(path.join(sparse, '.cache', 'un', 'us', 'unused'), 'utf8')
     ).rejects.toThrow()
+  })
+
+  it('omits and restores shared mbx shim binaries around transport', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'mbx-target-shims-'))
+    const target = path.join(root, 'target')
+    const source = path.join(root, 'mbx')
+    const shim = path.join(target, 'debug', '.mbx-build-script-shims', 'identity', 'mbx')
+    await mkdir(path.dirname(shim), {recursive: true})
+    await writeFile(source, 'current mbx')
+    await writeFile(shim, 'cached mbx')
+
+    await expect(dehydrateMbxShimBinaries(target)).resolves.toBe(1)
+    await expect(readFile(shim, 'utf8')).rejects.toThrow()
+    await expect(hydrateMbxShimBinaries(target, source)).resolves.toBe(1)
+    await expect(readFile(shim, 'utf8')).resolves.toBe('current mbx')
+    await writeFile(shim, 'stale mbx')
+    await expect(hydrateMbxShimBinaries(target, source)).resolves.toBe(1)
+    await expect(readFile(shim, 'utf8')).resolves.toBe('current mbx')
   })
 })
