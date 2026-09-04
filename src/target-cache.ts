@@ -1,4 +1,4 @@
-import {chmod, copyFile, link, open, readdir, rm, stat} from 'node:fs/promises'
+import {chmod, copyFile, open, readdir, rm, stat, truncate, utimes} from 'node:fs/promises'
 import path from 'node:path'
 
 const BUILD_SCRIPT_REAL_SUFFIX = '.mbx-real'
@@ -206,7 +206,10 @@ export async function dehydrateMbxShimBinaries(targetDirectory: string): Promise
     if (await isShellLauncher(shim)) return
     for (const installed of [shim, cargoBuildScriptAlias(shim)]) {
       try {
-        await rm(installed)
+        const metadata = await stat(installed)
+        if (metadata.size === 0) continue
+        await truncate(installed, 0)
+        await utimes(installed, metadata.atime, metadata.mtime)
         removed += 1
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -228,21 +231,18 @@ export async function hydrateMbxShimBinaries(
     hydrated += 1
   })
   await visitBuildScriptShims(targetDirectory, async shim => {
-    try {
-      await stat(shim)
-      return
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    for (const installed of [shim, cargoBuildScriptAlias(shim)]) {
+      let metadata
+      try {
+        metadata = await stat(installed)
+        if (metadata.size > 0) continue
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+      await installCachedBinary(sourceBinary, installed)
+      if (metadata) await utimes(installed, metadata.atime, metadata.mtime)
+      hydrated += 1
     }
-    await installCachedBinary(sourceBinary, shim)
-    hydrated += 1
-    const alias = cargoBuildScriptAlias(shim)
-    try {
-      await link(shim, alias)
-    } catch {
-      await installCachedBinary(sourceBinary, alias)
-    }
-    hydrated += 1
   })
   return hydrated
 }

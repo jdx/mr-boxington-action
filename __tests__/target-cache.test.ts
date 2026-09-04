@@ -1,4 +1,4 @@
-import {mkdtemp, mkdir, readFile, writeFile} from 'node:fs/promises'
+import {link, mkdtemp, mkdir, readFile, stat, utimes, writeFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import path from 'node:path'
 import {describe, expect, it} from 'vitest'
@@ -134,18 +134,25 @@ describe('target cache pruning', () => {
     }
     await writeFile(source, 'current mbx')
     await writeFile(legacy, 'copied mbx executable')
-    await writeFile(legacyAlias, 'copied mbx executable')
+    await link(legacy, legacyAlias)
+    const legacyMtime = new Date('2025-01-02T03:04:05Z')
+    await utimes(legacy, legacyMtime, legacyMtime)
+    await utimes(legacyAlias, legacyMtime, legacyMtime)
     await writeFile(launcher, '#!/bin/sh\nexec mbx "$@"\n')
     await writeFile(launcherAlias, 'compiled build script')
 
-    await expect(dehydrateMbxShimBinaries(target)).resolves.toBe(2)
-    await expect(readFile(legacy, 'utf8')).rejects.toThrow()
-    await expect(readFile(legacyAlias, 'utf8')).rejects.toThrow()
+    await expect(dehydrateMbxShimBinaries(target)).resolves.toBe(1)
+    await expect(readFile(legacy, 'utf8')).resolves.toBe('')
+    await expect(readFile(legacyAlias, 'utf8')).resolves.toBe('')
+    expect((await stat(legacy)).mtime.getTime()).toBe(legacyMtime.getTime())
+    expect((await stat(legacyAlias)).mtime.getTime()).toBe(legacyMtime.getTime())
     await expect(readFile(launcher, 'utf8')).resolves.toMatch(/^#!\/bin\/sh/)
     await expect(readFile(launcherAlias, 'utf8')).resolves.toBe('compiled build script')
-    await expect(hydrateMbxShimBinaries(target, source)).resolves.toBe(2)
+    await expect(hydrateMbxShimBinaries(target, source)).resolves.toBe(1)
     await expect(readFile(legacy, 'utf8')).resolves.toBe('current mbx')
     await expect(readFile(legacyAlias, 'utf8')).resolves.toBe('current mbx')
+    expect((await stat(legacy)).mtime.getTime()).toBe(legacyMtime.getTime())
+    expect((await stat(legacyAlias)).mtime.getTime()).toBe(legacyMtime.getTime())
     await expect(readFile(launcher, 'utf8')).resolves.toMatch(/^#!\/bin\/sh/)
     await expect(readFile(launcherAlias, 'utf8')).resolves.toBe('compiled build script')
   })
