@@ -93,13 +93,29 @@ async function pruneSparseIndex(directory: string, keep: Set<string>): Promise<b
     if (entry.isDirectory()) {
       if (await pruneSparseIndex(child, keep)) await remove(child)
       else empty = false
-    } else if (keep.has(entry.name)) {
+    } else if (keep.has(entry.name) || ['config.json', 'CACHEDIR.TAG'].includes(entry.name)) {
       empty = false
     } else {
       await remove(child)
     }
   }
   return empty
+}
+
+export async function hasReusableCargoTarget(targetDirectory: string): Promise<boolean> {
+  if (!(await directoryExists(targetDirectory))) return false
+  for (const entry of await readdir(targetDirectory, {withFileTypes: true})) {
+    if (!entry.isDirectory()) continue
+    const child = path.join(targetDirectory, entry.name)
+    if (entry.name === '.fingerprint') {
+      if ((await readdir(child)).length > 0) return true
+      continue
+    }
+    if (!['build', 'deps', '.mbx-build-script-shims'].includes(entry.name)) {
+      if (await hasReusableCargoTarget(child)) return true
+    }
+  }
+  return false
 }
 
 async function visitShimDirectories(

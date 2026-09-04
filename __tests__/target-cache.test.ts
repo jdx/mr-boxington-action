@@ -5,6 +5,7 @@ import {describe, expect, it} from 'vitest'
 import {
   cargoKeepSets,
   dehydrateMbxShimBinaries,
+  hasReusableCargoTarget,
   hydrateMbxShimBinaries,
   matchesCargoEntry,
   pruneCargoTargetCache
@@ -87,6 +88,17 @@ describe('target cache pruning', () => {
     await expect(
       readFile(path.join(sparse, '.cache', 'un', 'us', 'unused'), 'utf8')
     ).rejects.toThrow()
+    await expect(readFile(path.join(sparse, 'config.json'), 'utf8')).resolves.toBe('config')
+    await expect(hasReusableCargoTarget(target)).resolves.toBe(true)
+  })
+
+  it('distinguishes an empty target from reusable Cargo state', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'mbx-empty-target-'))
+    await expect(hasReusableCargoTarget(path.join(root, 'missing'))).resolves.toBe(false)
+    await mkdir(path.join(root, 'target', 'debug', '.fingerprint'), {recursive: true})
+    await expect(hasReusableCargoTarget(path.join(root, 'target'))).resolves.toBe(false)
+    await writeFile(path.join(root, 'target', 'debug', '.fingerprint', 'crate-hash'), 'state')
+    await expect(hasReusableCargoTarget(path.join(root, 'target'))).resolves.toBe(true)
   })
 
   it('omits and restores shared mbx shim binaries around transport', async () => {

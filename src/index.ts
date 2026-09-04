@@ -34,6 +34,7 @@ import {
 } from './lib.js'
 import {
   dehydrateMbxShimBinaries,
+  hasReusableCargoTarget,
   hydrateMbxShimBinaries,
   pruneCargoTargetCache
 } from './target-cache.js'
@@ -364,6 +365,10 @@ async function post(): Promise<void> {
   const group = core.getState(CACHE_EXPORT_GROUP_STATE)
   const paths = JSON.parse(core.getState(CACHE_PATHS_STATE)) as string[]
   if (!group) {
+    if (!(await hasReusableCargoTarget(path.resolve('target')))) {
+      core.info('No reusable Cargo target state was produced; not saving a registry-only cache')
+      return
+    }
     const metadata = await capture('cargo', ['metadata', '--format-version', '1'])
     const cargoHome = process.env.CARGO_HOME || path.join(homedir(), '.cargo')
     await pruneCargoTargetCache(path.resolve('target'), cargoHome, metadata)
