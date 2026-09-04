@@ -374,7 +374,7 @@ async function main(): Promise<void> {
     await exec.exec(installed.bin, ['cache', 'import', cacheArchive])
   } else if (restoredKey && githubCacheMode === 'target') {
     const hydrated = await hydrateMbxShimBinaries(path.resolve('target'), installed.bin)
-    if (hydrated > 0) core.info(`Restored ${hydrated} shared mbx build-script shim binaries`)
+    if (hydrated > 0) core.info(`Restored ${hydrated} mbx build-script shim binaries`)
   }
   const hit = restoredKey === primaryKey
   core.setOutput('cache-hit', hit ? 'true' : 'false')
@@ -434,7 +434,7 @@ async function post(): Promise<void> {
     const cargoHome = process.env.CARGO_HOME || path.join(homedir(), '.cargo')
     await pruneCargoTargetCache(path.resolve('target'), cargoHome, metadata)
     const dehydrated = await dehydrateMbxShimBinaries(path.resolve('target'))
-    if (dehydrated > 0) core.info(`Omitted ${dehydrated} shared mbx build-script shim binaries`)
+    if (dehydrated > 0) core.info(`Omitted ${dehydrated} mbx build-script shim binaries`)
     const cacheId = await cache.saveCache(paths, primaryKey)
     core.info(`Saved mbx target cache ${primaryKey} (ID ${cacheId})`)
     return

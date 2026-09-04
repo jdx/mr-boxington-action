@@ -68,11 +68,13 @@ This mode disables mbx-managed target views and native-link object caching so
 the action can transport the in-place `target` tree without also transporting
 mbx's object cache. The post step removes final products and unrelated Cargo
 state before saving, while retaining fingerprints, dependencies, build-script
-state, and the registry. Shared mbx build-script shim executables are omitted
-from the archive and rehydrated from the installed mbx after restore. When
-`version` pins an exact release, the archive also carries one mbx executable
-so later warm jobs avoid a separate release download. The default `objects`
-mode retains mbx's portable action-object cache and remains
+state, and the registry. Full mbx executables used by build-script shims,
+including legacy hard-linked copies, are omitted from transport and rehydrated
+from the installed mbx after restore; tiny launchers and Cargo freshness
+timestamps remain intact. When `version` pins an exact release, the archive
+also carries one mbx executable so later warm jobs avoid a separate release
+download. The default `objects` mode retains mbx's portable action-object
+cache and remains
 the better fit when builds must share across differing target directories or
 checkout layouts.
 
