@@ -54,6 +54,24 @@ including warm cache hits, rather than uploading the entire local store. The
 action assigns a unique `MBX_CACHE_EXPORT_GROUP` automatically; workflows do
 not need to set it themselves.
 
+For workflows dominated by small edits to an otherwise warm Cargo tree, the
+experimental `target` mode restores Cargo's pruned target directory directly:
+
+```yaml
+- uses: jdx/mr-boxington-action@v1
+  with:
+    github-cache-mode: target
+- run: mbx test --workspace
+```
+
+This mode disables mbx-managed target views and native-link object caching so
+the action can transport the in-place `target` tree without also transporting
+mbx's object cache. The post step removes final products and unrelated Cargo
+state before saving, while retaining fingerprints, dependencies, build-script
+state, the registry, and mbx's shared build-script shim. The default `objects`
+mode retains mbx's portable action-object cache and remains the better fit when
+builds must share across differing target directories or checkout layouts.
+
 The generated cache key includes the identity of the `rustc` on `PATH`
 (a hash of `rustc -vV`, the same identity Swatinem/rust-cache keys on). mbx
 keys every cached compilation on the compiler, so a store built by one
@@ -148,6 +166,7 @@ own authorization policy.
 | `version`                   |                       | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH`       |
 | `github-token`              | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported                                 |
 | `cache-generation`          | `v1`                  | Generated GitHub cache key generation                                          |
+| `github-cache-mode`         | `objects`             | GitHub payload: portable mbx `objects` or experimental warm `target` tree       |
 | `save-on-workflow-dispatch` | `false`               | Save after a successful trusted `workflow_dispatch` run                        |
 | `toolchain`                 |                       | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
 | `cache-links`               | `auto`                | Cache native links; automatically enabled on Linux                             |

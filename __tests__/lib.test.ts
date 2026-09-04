@@ -11,6 +11,7 @@ import {
   mbxReleaseToInstall,
   normalizedVersion,
   parseBackend,
+  parseGithubCacheMode,
   parsedMbxVersion,
   requireGithubCacheRuntime,
   releaseTarget,
@@ -101,6 +102,9 @@ describe('inputs', () => {
     expect(parseBackend('github')).toBe('github')
     expect(parseBackend('server')).toBe('server')
     expect(() => parseBackend('s3')).toThrow()
+    expect(parseGithubCacheMode('objects')).toBe('objects')
+    expect(parseGithubCacheMode('target')).toBe('target')
+    expect(() => parseGithubCacheMode('archive')).toThrow(/github-cache-mode/)
     expect(normalizedVersion('v0.3.0')).toBe('0.3.0')
     expect(normalizedVersion('latest')).toBe('latest')
     expect(() => normalizedVersion('../main')).toThrow()

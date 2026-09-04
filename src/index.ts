@@ -5,6 +5,7 @@ import {context} from '@actions/github'
 import * as tc from '@actions/tool-cache'
 import {createHash, randomUUID} from 'node:crypto'
 import {chmod, mkdir, readFile} from 'node:fs/promises'
+import {homedir} from 'node:os'
 import path from 'node:path'
 import {
   cacheLinksValue,
@@ -19,6 +20,7 @@ import {
   mbxReleaseToInstall,
   normalizedVersion,
   parseBackend,
+  parseGithubCacheMode,
   parsedMbxVersion,
   requireGithubCacheRuntime,
   releaseTarget,
@@ -29,12 +31,14 @@ import {
   type GithubRelease,
   type VerifiedReleaseAsset
 } from './lib.js'
+import {pruneCargoTargetCache} from './target-cache.js'
 
 const POST_STATE = 'mbx-post'
 const CACHE_KEY_STATE = 'mbx-cache-key'
 const CACHE_HIT_STATE = 'mbx-cache-hit'
 const CACHE_ARCHIVE_STATE = 'mbx-cache-archive'
 const CACHE_EXPORT_GROUP_STATE = 'mbx-cache-export-group'
+const CACHE_PATHS_STATE = 'mbx-cache-paths'
 const MBX_STATE = 'mbx-bin'
 const CACHE_ARCHIVE_NAME = 'github-actions-cache-v1.tar'
 
@@ -186,6 +190,7 @@ function configureServer(): void {
 
 async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
+  const githubCacheMode = parseGithubCacheMode(core.getInput('github-cache-mode'))
   if (backend === 'github') requireGithubCacheRuntime()
   const githubToken = githubTokenValue(core.getInput('github-token'))
   if (githubToken) core.setSecret(githubToken)
@@ -194,7 +199,11 @@ async function main(): Promise<void> {
   core.setOutput('mbx-version', installed.version)
   core.saveState(POST_STATE, backend)
   core.saveState(MBX_STATE, installed.bin)
-  const cacheLinks = cacheLinksValue(core.getInput('cache-links'), process.platform)
+  const cacheLinksInput = core.getInput('cache-links')
+  const cacheLinks =
+    backend === 'github' && githubCacheMode === 'target' && cacheLinksInput === 'auto'
+      ? '0'
+      : cacheLinksValue(cacheLinksInput, process.platform)
   if (cacheLinks !== undefined) core.exportVariable('MBX_CACHE_LINKS', cacheLinks)
 
   if (backend === 'local') {
@@ -222,8 +231,15 @@ async function main(): Promise<void> {
   const cacheDir = await capture(installed.bin, ['cache', 'dir'])
   await mkdir(cacheDir, {recursive: true})
   const cacheArchive = path.join(cacheDir, CACHE_ARCHIVE_NAME)
-  const exportGroup = `github-actions-${context.runId}-${context.runAttempt}-${randomUUID()}`
-  core.exportVariable('MBX_CACHE_EXPORT_GROUP', exportGroup)
+  const exportGroup =
+    githubCacheMode === 'objects'
+      ? `github-actions-${context.runId}-${context.runAttempt}-${randomUUID()}`
+      : ''
+  if (exportGroup) core.exportVariable('MBX_CACHE_EXPORT_GROUP', exportGroup)
+  if (githubCacheMode === 'target') {
+    core.exportVariable('MBX_REMOTE_URL', '')
+    core.exportVariable('MBX_TARGET_VIEWS', '0')
+  }
   const generation = core.getInput('cache-generation')
   const requestedToolchain = core.getInput('toolchain')
   const toolchain = toolchainSegment(await rustcIdentity(requestedToolchain))
@@ -259,8 +275,15 @@ async function main(): Promise<void> {
   if (restoreKeys.length === 0) {
     restoreKeys.push(generatedRestoreKey(process.platform, process.arch, generation, toolchain))
   }
-  const restoredKey = await cache.restoreCache([cacheArchive], primaryKey, restoreKeys)
-  if (restoredKey) {
+  const cargoHome = process.env.CARGO_HOME || path.join(homedir(), '.cargo')
+  const targetPaths = [
+    path.resolve('target'),
+    path.join(cargoHome, 'registry'),
+    path.join(cargoHome, 'git')
+  ]
+  const cachePaths = githubCacheMode === 'target' ? targetPaths : [cacheArchive]
+  const restoredKey = await cache.restoreCache(cachePaths, primaryKey, restoreKeys)
+  if (restoredKey && githubCacheMode === 'objects') {
     await exec.exec(installed.bin, ['cache', 'import', cacheArchive])
   }
   const hit = restoredKey === primaryKey
@@ -270,6 +293,7 @@ async function main(): Promise<void> {
 
   core.saveState(CACHE_ARCHIVE_STATE, cacheArchive)
   core.saveState(CACHE_EXPORT_GROUP_STATE, exportGroup)
+  core.saveState(CACHE_PATHS_STATE, JSON.stringify(cachePaths))
   core.saveState(CACHE_KEY_STATE, primaryKey)
   core.saveState(CACHE_HIT_STATE, hit ? 'true' : 'false')
   const defaultBranch = (context.payload.repository as {default_branch?: string} | undefined)
@@ -293,13 +317,15 @@ async function main(): Promise<void> {
   await leaveCallingCard(note, [
     {label: 'mbx', value: installed.version},
     {label: 'Backend', value: 'GitHub Actions cache'},
+    {label: 'Payload', value: githubCacheMode === 'target' ? 'Cargo target tree' : 'mbx objects'},
     {label: 'Cache', value: cacheResult},
     {label: 'Policy', value: save ? 'save after a successful job' : 'restore only'}
   ])
 }
 
 async function post(): Promise<void> {
-  if (core.getState(POST_STATE) !== 'github-save') return
+  const postState = core.getState(POST_STATE)
+  if (postState !== 'github-save') return
   const primaryKey = core.getState(CACHE_KEY_STATE)
   if (core.getState(CACHE_HIT_STATE) === 'true') {
     core.info(`Exact cache ${primaryKey} already exists; not saving it again`)
@@ -308,6 +334,15 @@ async function post(): Promise<void> {
   const mbx = core.getState(MBX_STATE)
   const archive = core.getState(CACHE_ARCHIVE_STATE)
   const group = core.getState(CACHE_EXPORT_GROUP_STATE)
+  const paths = JSON.parse(core.getState(CACHE_PATHS_STATE)) as string[]
+  if (!group) {
+    const metadata = await capture('cargo', ['metadata', '--format-version', '1'])
+    const cargoHome = process.env.CARGO_HOME || path.join(homedir(), '.cargo')
+    await pruneCargoTargetCache(path.resolve('target'), cargoHome, metadata)
+    const cacheId = await cache.saveCache(paths, primaryKey)
+    core.info(`Saved mbx target cache ${primaryKey} (ID ${cacheId})`)
+    return
+  }
   let output = ''
   const exportExitCode = await exec.exec(mbx, ['cache', 'export', '--group', group, archive], {
     ignoreReturnCode: true,

@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto'
 
 export type Backend = 'local' | 'github' | 'server'
+export type GithubCacheMode = 'objects' | 'target'
 
 export interface CallingCardRow {
   label: string
@@ -85,6 +86,13 @@ export function callingCard(note: string, rows: CallingCardRow[]): string {
 export function parseBackend(value: string): Backend {
   if (value === 'local' || value === 'github' || value === 'server') return value
   throw new Error(`backend must be "local", "github", or "server", got ${JSON.stringify(value)}`)
+}
+
+export function parseGithubCacheMode(value: string): GithubCacheMode {
+  if (value === 'objects' || value === 'target') return value
+  throw new Error(
+    `github-cache-mode must be "objects" or "target", got ${JSON.stringify(value)}`
+  )
 }
 
 export function cacheLinksValue(value: string, platform: NodeJS.Platform): string | undefined {
