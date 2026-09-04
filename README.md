@@ -68,9 +68,11 @@ This mode disables mbx-managed target views and native-link object caching so
 the action can transport the in-place `target` tree without also transporting
 mbx's object cache. The post step removes final products and unrelated Cargo
 state before saving, while retaining fingerprints, dependencies, build-script
-state, the registry, and mbx's shared build-script shim. The default `objects`
-mode retains mbx's portable action-object cache and remains the better fit when
-builds must share across differing target directories or checkout layouts.
+state, and the registry. Shared mbx build-script shim executables are omitted
+from the archive and rehydrated from the installed mbx after restore. The
+default `objects` mode retains mbx's portable action-object cache and remains
+the better fit when builds must share across differing target directories or
+checkout layouts.
 
 The generated cache key includes the identity of the `rustc` on `PATH`
 (a hash of `rustc -vV`, the same identity Swatinem/rust-cache keys on). mbx

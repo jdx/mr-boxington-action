@@ -104,8 +104,9 @@ describe('target cache pruning', () => {
   it('omits and restores shared mbx shim binaries around transport', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'mbx-target-shims-'))
     const target = path.join(root, 'target')
-    const source = path.join(root, 'mbx')
-    const shim = path.join(target, 'debug', '.mbx-build-script-shims', 'identity', 'mbx')
+    const mbxName = process.platform === 'win32' ? 'mbx.exe' : 'mbx'
+    const source = path.join(root, mbxName)
+    const shim = path.join(target, 'debug', '.mbx-build-script-shims', 'identity', mbxName)
     await mkdir(path.dirname(shim), {recursive: true})
     await writeFile(source, 'current mbx')
     await writeFile(shim, 'cached mbx')

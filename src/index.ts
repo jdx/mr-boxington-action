@@ -15,6 +15,7 @@ import {
   type CallingCardRow,
   generatedKey,
   generatedRestoreKey,
+  githubCacheGeneration,
   githubApiHeaders,
   githubTokenValue,
   isEmptyExport,
@@ -222,11 +223,10 @@ async function main(): Promise<void> {
   core.setOutput('mbx-version', installed.version)
   core.saveState(POST_STATE, backend)
   core.saveState(MBX_STATE, installed.bin)
-  const cacheLinksInput = core.getInput('cache-links')
   const cacheLinks =
-    backend === 'github' && githubCacheMode === 'target' && cacheLinksInput === 'auto'
+    backend === 'github' && githubCacheMode === 'target'
       ? '0'
-      : cacheLinksValue(cacheLinksInput, process.platform)
+      : cacheLinksValue(core.getInput('cache-links'), process.platform)
   if (cacheLinks !== undefined) core.exportVariable('MBX_CACHE_LINKS', cacheLinks)
 
   if (backend === 'local') {
@@ -266,7 +266,7 @@ async function main(): Promise<void> {
     core.exportVariable('MBX_REMOTE_URL', '')
     core.exportVariable('MBX_TARGET_VIEWS', '0')
   }
-  const generation = core.getInput('cache-generation')
+  const generation = githubCacheGeneration(core.getInput('cache-generation'), githubCacheMode)
   const requestedToolchain = core.getInput('toolchain')
   const toolchain = toolchainSegment(await rustcIdentity(requestedToolchain))
   if (toolchain === 'norust') {

@@ -5,6 +5,7 @@ import {
   callingCard,
   generatedKey,
   generatedRestoreKey,
+  githubCacheGeneration,
   githubApiHeaders,
   githubTokenValue,
   isEmptyExport,
@@ -188,6 +189,8 @@ describe('inputs', () => {
     expect(generatedRestoreKey('linux', 'x64', 'v2', 'rust-0123456789ab')).toBe(
       'linux-x64-mbx-v2-rust-0123456789ab-'
     )
+    expect(githubCacheGeneration('v2', 'objects')).toBe('v2')
+    expect(githubCacheGeneration('v2', 'target')).toBe('v2-target')
   })
 
   it('recognizes an export group with no completed build', () => {

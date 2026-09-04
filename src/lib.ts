@@ -164,6 +164,13 @@ export function generatedRestoreKey(
   return `${os}-${arch}-mbx-${generation}-${toolchain}-`
 }
 
+export function githubCacheGeneration(
+  generation: string,
+  mode: GithubCacheMode
+): string {
+  return mode === 'objects' ? generation : `${generation}-${mode}`
+}
+
 /** The export error that means a job completed without running an mbx build. */
 export function isEmptyExport(output: string): boolean {
   return output.includes('no completed mbx builds are recorded for export group')

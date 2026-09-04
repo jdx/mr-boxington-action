@@ -86,14 +86,21 @@ async function pruneTargetDirectory(directory: string, keep: KeepSets): Promise<
   }
 }
 
-async function pruneSparseIndex(directory: string, keep: Set<string>): Promise<boolean> {
+async function pruneSparseIndex(
+  directory: string,
+  keep: Set<string>,
+  isRoot = false
+): Promise<boolean> {
   let empty = true
   for (const entry of await readdir(directory, {withFileTypes: true})) {
     const child = path.join(directory, entry.name)
     if (entry.isDirectory()) {
       if (await pruneSparseIndex(child, keep)) await remove(child)
       else empty = false
-    } else if (keep.has(entry.name) || ['config.json', 'CACHEDIR.TAG'].includes(entry.name)) {
+    } else if (
+      keep.has(entry.name) ||
+      (isRoot && ['config.json', 'CACHEDIR.TAG'].includes(entry.name))
+    ) {
       empty = false
     } else {
       await remove(child)
@@ -180,7 +187,7 @@ export async function pruneCargoTargetCache(
     if (await directoryExists(path.join(index, '.git'))) {
       await remove(path.join(index, '.cache'))
     } else {
-      await pruneSparseIndex(index, keep.registry)
+      await pruneSparseIndex(index, keep.registry, true)
     }
   }
 }
