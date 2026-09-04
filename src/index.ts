@@ -228,9 +228,12 @@ async function main(): Promise<void> {
     return
   }
 
-  const cacheDir = await capture(installed.bin, ['cache', 'dir'])
-  await mkdir(cacheDir, {recursive: true})
-  const cacheArchive = path.join(cacheDir, CACHE_ARCHIVE_NAME)
+  let cacheArchive = ''
+  if (githubCacheMode === 'objects') {
+    const cacheDir = await capture(installed.bin, ['cache', 'dir'])
+    await mkdir(cacheDir, {recursive: true})
+    cacheArchive = path.join(cacheDir, CACHE_ARCHIVE_NAME)
+  }
   const exportGroup =
     githubCacheMode === 'objects'
       ? `github-actions-${context.runId}-${context.runAttempt}-${randomUUID()}`
