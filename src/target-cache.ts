@@ -1,4 +1,4 @@
-import {chmod, copyFile, open, readdir, rm, stat} from 'node:fs/promises'
+import {chmod, copyFile, link, open, readdir, rm, stat} from 'node:fs/promises'
 import path from 'node:path'
 
 const BUILD_SCRIPT_REAL_SUFFIX = '.mbx-real'
@@ -179,6 +179,15 @@ async function isShellLauncher(file: string): Promise<boolean> {
   }
 }
 
+function cargoBuildScriptAlias(shim: string): string {
+  return path.join(path.dirname(shim), process.platform === 'win32' ? 'build-script-build.exe' : 'build-script-build')
+}
+
+async function installCachedBinary(source: string, destination: string): Promise<void> {
+  await copyFile(source, destination)
+  if (process.platform !== 'win32') await chmod(destination, 0o755)
+}
+
 export async function dehydrateMbxShimBinaries(targetDirectory: string): Promise<number> {
   let removed = 0
   await visitShimDirectories(targetDirectory, async shimDirectory => {
@@ -195,11 +204,13 @@ export async function dehydrateMbxShimBinaries(targetDirectory: string): Promise
   // those paths without guessing names. Keep newer tiny shell launchers intact.
   await visitBuildScriptShims(targetDirectory, async shim => {
     if (await isShellLauncher(shim)) return
-    try {
-      await rm(shim)
-      removed += 1
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    for (const installed of [shim, cargoBuildScriptAlias(shim)]) {
+      try {
+        await rm(installed)
+        removed += 1
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
     }
   })
   return removed
@@ -223,8 +234,14 @@ export async function hydrateMbxShimBinaries(
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
-    await copyFile(sourceBinary, shim)
-    if (process.platform !== 'win32') await chmod(shim, 0o755)
+    await installCachedBinary(sourceBinary, shim)
+    hydrated += 1
+    const alias = cargoBuildScriptAlias(shim)
+    try {
+      await link(shim, alias)
+    } catch {
+      await installCachedBinary(sourceBinary, alias)
+    }
     hydrated += 1
   })
   return hydrated
