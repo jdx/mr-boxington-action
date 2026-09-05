@@ -35,8 +35,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      # The objects payload keeps its own lifecycle (import before the build,
+      # export the closure after), so this job pins it explicitly and the
+      # `target` job below covers the default.
       - id: mbx
         uses: ./
+        with:
+          github-cache-mode: objects
       - run: mbx --version
       - run: mbx cache dir
       # The toolchain segment is what keeps one toolchain's store off another's
@@ -54,6 +59,34 @@ jobs:
       # phases. Node keeps the harness identical on bash, macOS, and PowerShell.
       - name: Round-trip a real build closure
         run: node .github/e2e/cache-bundle.mjs
+
+  target:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - id: mbx
+        uses: ./
+        with:
+          # Its own generation, so a smoke test never saves over a key a real
+          # build would restore.
+          cache-generation: target-default-ci
+      - run: mbx --version
+      - name: Check the default payload is the target tree
+        env:
+          PRIMARY_KEY: ${{ steps.mbx.outputs.cache-primary-key }}
+        run: |
+          node -e "const k = process.env.PRIMARY_KEY; if (!/-mbx-target-default-ci-target-/.test(k)) { console.error('default cache key is not scoped to the target payload: ' + k); process.exit(1) }"
+          node -e "if (process.env.MBX_TARGET_VIEWS !== '0' || process.env.MBX_CACHE_LINKS !== '0') { console.error('target mode must keep Cargo in place and skip link objects'); process.exit(1) }"
+      - name: Build into the in-place target
+        run: mbx build --locked --manifest-path .github/e2e/fixture/Cargo.toml
+      - name: Check Cargo state stayed in place
+        run: node -e "const fs = require('fs'); if (!fs.existsSync('.github/e2e/fixture/target/debug/.fingerprint')) { console.error('no fingerprint tree in the workspace target'); process.exit(1) }"
 
   toolchain:
     runs-on: ubuntu-latest
@@ -120,7 +153,7 @@ jobs:
 
   final:
     permissions: {}
-    needs: [action, server, test, toolchain]
+    needs: [action, server, target, test, toolchain]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     # Run on success or upstream failure but skip when the workflow is cancelled

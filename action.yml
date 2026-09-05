@@ -25,6 +25,9 @@ inputs:
   cache-generation:
     description: Value included in generated GitHub cache keys; change it to start fresh
     default: v1
+  github-cache-mode:
+    description: GitHub cache payload, either the warm Cargo "target" tree or portable mbx "objects"
+    default: target
   save-on-workflow-dispatch:
     description: Save the GitHub cache after a successful workflow_dispatch run; enable only in trusted workflows
     default: "false"

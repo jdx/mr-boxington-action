@@ -41,18 +41,39 @@ steps:
   - run: mbx test --workspace
 ```
 
-The default backend restores the action closure from the previous compatible
-build on every run. It saves a new immutable entry for pushes to the
+The default backend restores Cargo's pruned target directory and registry from
+the previous compatible build on every run, so a job that changes a few files
+recompiles only those crates. It saves a new immutable entry for pushes to the
 repository's default branch and, when `save-on-workflow-dispatch` is enabled,
 trusted `workflow_dispatch` runs. Pull requests—including forks—are
 restore-only.
 
-The action imports the restored bundle before any build steps and exports the
-deduplicated closure of every completed `mbx` command in the job afterward.
-This keeps GitHub Actions cache entries focused on what the job actually used,
-including warm cache hits, rather than uploading the entire local store. The
-action assigns a unique `MBX_CACHE_EXPORT_GROUP` automatically; workflows do
-not need to set it themselves.
+The action disables mbx-managed target views and native-link object caching so
+it can transport the in-place `target` tree without also transporting mbx's
+object cache. The post step removes final products and unrelated Cargo state
+before saving, while retaining fingerprints, dependencies, build-script state,
+and the registry. Full mbx executables used by build-script shims, including
+legacy hard-linked copies, are omitted from transport and rehydrated from the
+installed mbx after restore; tiny launchers and Cargo freshness timestamps
+remain intact. When `version` pins an exact release, the archive also carries
+one mbx executable so later warm jobs avoid a separate release download.
+
+The earlier `objects` payload is still available for workflows whose builds
+must share across differing target directories or checkout layouts:
+
+```yaml
+- uses: jdx/mr-boxington-action@v1
+  with:
+    github-cache-mode: objects
+- run: mbx test --workspace
+```
+
+That mode imports the restored bundle before any build steps and exports the
+deduplicated closure of every completed `mbx` command in the job afterward,
+assigning a unique `MBX_CACHE_EXPORT_GROUP` automatically. Its entries are
+smaller because they omit the Cargo registry, which Cargo then downloads again
+inside the build; in paired measurements on GitHub-hosted runners it restored
+and built a small edit roughly ten seconds slower than the `target` payload.
 
 The generated cache key includes the identity of the `rustc` on `PATH`
 (a hash of `rustc -vV`, the same identity Swatinem/rust-cache keys on). mbx
@@ -148,6 +169,7 @@ own authorization policy.
 | `version`                   |                       | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH`       |
 | `github-token`              | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported                                 |
 | `cache-generation`          | `v1`                  | Generated GitHub cache key generation                                          |
+| `github-cache-mode`         | `target`              | GitHub payload: warm Cargo `target` tree or portable mbx `objects`             |
 | `save-on-workflow-dispatch` | `false`               | Save after a successful trusted `workflow_dispatch` run                        |
 | `toolchain`                 |                       | Toolchain the build names, such as `1.91` or `+1.91`; the cache key follows it |
 | `cache-links`               | `auto`                | Cache native links; automatically enabled on Linux                             |

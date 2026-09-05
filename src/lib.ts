@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto'
 
 export type Backend = 'local' | 'github' | 'server'
+export type GithubCacheMode = 'objects' | 'target'
 
 export interface CallingCardRow {
   label: string
@@ -87,6 +88,13 @@ export function parseBackend(value: string): Backend {
   throw new Error(`backend must be "local", "github", or "server", got ${JSON.stringify(value)}`)
 }
 
+export function parseGithubCacheMode(value: string): GithubCacheMode {
+  if (value === 'objects' || value === 'target') return value
+  throw new Error(
+    `github-cache-mode must be "objects" or "target", got ${JSON.stringify(value)}`
+  )
+}
+
 export function cacheLinksValue(value: string, platform: NodeJS.Platform): string | undefined {
   if (value === 'auto') return platform === 'linux' ? '1' : undefined
   if (value === 'true') return '1'
@@ -115,6 +123,12 @@ export function normalizedVersion(value: string): string {
     throw new Error(`invalid mbx version ${JSON.stringify(value)}`)
   }
   return version.replace(/^v/, '')
+}
+
+/** A pinned release can be reused without asking GitHub whether "latest" moved. */
+export function canReuseCachedMbx(requested: string, installed: string | undefined): boolean {
+  const version = normalizedVersion(requested)
+  return version !== 'latest' && installed === version
 }
 
 export function verifiedReleaseAsset(
@@ -154,6 +168,19 @@ export function generatedRestoreKey(
   toolchain: string
 ): string {
   return `${os}-${arch}-mbx-${generation}-${toolchain}-`
+}
+
+/**
+ * Generation segment of a generated key, scoped by payload so the two cache
+ * formats can never restore each other. `objects` keeps the bare generation
+ * because that is the key space its entries were saved under before `target`
+ * became the default.
+ */
+export function githubCacheGeneration(
+  generation: string,
+  mode: GithubCacheMode
+): string {
+  return mode === 'objects' ? generation : `${generation}-${mode}`
 }
 
 /** The export error that means a job completed without running an mbx build. */

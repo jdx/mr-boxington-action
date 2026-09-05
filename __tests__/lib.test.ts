@@ -2,15 +2,18 @@ import {describe, expect, it} from 'vitest'
 import {
   cacheLinksValue,
   cacheRevision,
+  canReuseCachedMbx,
   callingCard,
   generatedKey,
   generatedRestoreKey,
+  githubCacheGeneration,
   githubApiHeaders,
   githubTokenValue,
   isEmptyExport,
   mbxReleaseToInstall,
   normalizedVersion,
   parseBackend,
+  parseGithubCacheMode,
   parsedMbxVersion,
   requireGithubCacheRuntime,
   releaseTarget,
@@ -101,6 +104,9 @@ describe('inputs', () => {
     expect(parseBackend('github')).toBe('github')
     expect(parseBackend('server')).toBe('server')
     expect(() => parseBackend('s3')).toThrow()
+    expect(parseGithubCacheMode('objects')).toBe('objects')
+    expect(parseGithubCacheMode('target')).toBe('target')
+    expect(() => parseGithubCacheMode('archive')).toThrow(/github-cache-mode/)
     expect(normalizedVersion('v0.3.0')).toBe('0.3.0')
     expect(normalizedVersion('latest')).toBe('latest')
     expect(() => normalizedVersion('../main')).toThrow()
@@ -113,6 +119,12 @@ describe('inputs', () => {
     expect(mbxReleaseToInstall('', true)).toBeUndefined()
     expect(mbxReleaseToInstall('', false)).toBe('latest')
     expect(mbxReleaseToInstall('v1.3.1', true)).toBe('1.3.1')
+  })
+
+  it('reuses only the exact pinned mbx release from a target cache', () => {
+    expect(canReuseCachedMbx('v1.8.0', '1.8.0')).toBe(true)
+    expect(canReuseCachedMbx('1.8.0', '1.7.0')).toBe(false)
+    expect(canReuseCachedMbx('latest', '1.8.0')).toBe(false)
   })
 
   it('enables native link caching automatically only on Linux', () => {
@@ -184,6 +196,8 @@ describe('inputs', () => {
     expect(generatedRestoreKey('linux', 'x64', 'v2', 'rust-0123456789ab')).toBe(
       'linux-x64-mbx-v2-rust-0123456789ab-'
     )
+    expect(githubCacheGeneration('v2', 'objects')).toBe('v2')
+    expect(githubCacheGeneration('v2', 'target')).toBe('v2-target')
   })
 
   it('recognizes an export group with no completed build', () => {
