@@ -170,6 +170,12 @@ export function generatedRestoreKey(
   return `${os}-${arch}-mbx-${generation}-${toolchain}-`
 }
 
+/**
+ * Generation segment of a generated key, scoped by payload so the two cache
+ * formats can never restore each other. `objects` keeps the bare generation
+ * because that is the key space its entries were saved under before `target`
+ * became the default.
+ */
 export function githubCacheGeneration(
   generation: string,
   mode: GithubCacheMode
