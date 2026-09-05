@@ -153,7 +153,7 @@ jobs:
 
   final:
     permissions: {}
-    needs: [action, server, test, toolchain]
+    needs: [action, server, target, test, toolchain]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     # Run on success or upstream failure but skip when the workflow is cancelled
