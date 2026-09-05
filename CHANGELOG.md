@@ -1,6 +1,15 @@
 # Changelog
 
 ---
+## [1.3.0](https://github.com/jdx/mr-boxington-action/compare/v1.2.0..v1.3.0) - 2026-09-05
+
+### 🚀 Features
+
+- add local cache backend (#28) by [@jdx](https://github.com/jdx) in [#28](https://github.com/jdx/mr-boxington-action/pull/28)
+- remove the deprecated max-size input (#30) by [@jdx](https://github.com/jdx) in [#30](https://github.com/jdx/mr-boxington-action/pull/30)
+- cache the Cargo target tree by default (#31) by [@jdx](https://github.com/jdx) in [#31](https://github.com/jdx/mr-boxington-action/pull/31)
+
+---
 ## [1.2.0](https://github.com/jdx/mr-boxington-action/compare/v1.1.0..v1.2.0) - 2026-09-01
 
 ### 🚀 Features
