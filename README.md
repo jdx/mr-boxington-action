@@ -20,15 +20,6 @@ The local backend installs or reuses mbx and leaves its store on the filesystem 
 configuring a remote transport or an upload/download phase. This is useful on
 persistent runners and with volume actions that mount mbx's cache directory.
 
-## Current CI performance
-
-> [!WARNING]
-> mbx performs well for local development. Remote caching works and is
-> actively improving, but does not yet consistently outperform
-> [`Swatinem/rust-cache`](https://github.com/Swatinem/rust-cache) on
-> GitHub-hosted runners. Benchmark your complete workflow before switching.
-> Investigations, discussions, and pull requests to improve it are welcome.
-
 ## GitHub Actions cache
 
 ```yaml
