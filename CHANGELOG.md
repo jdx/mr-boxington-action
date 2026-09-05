@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [1.3.1](https://github.com/jdx/mr-boxington-action/compare/v1.3.0..v1.3.1) - 2026-09-05
+
+### 📚 Documentation
+
+- drop the CI performance warning (#32) by [@jdx](https://github.com/jdx) in [#32](https://github.com/jdx/mr-boxington-action/pull/32)
+
+---
 ## [1.3.0](https://github.com/jdx/mr-boxington-action/compare/v1.2.0..v1.3.0) - 2026-09-05
 
 ### 🚀 Features
