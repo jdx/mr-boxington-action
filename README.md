@@ -66,6 +66,14 @@ smaller because they omit the Cargo registry, which Cargo then downloads again
 inside the build; in paired measurements on GitHub-hosted runners it restored
 and built a small edit roughly ten seconds slower than the `target` payload.
 
+On GitHub-hosted runners, `objects` mode sets `MBX_GC_AUTO=0` for the job unless
+that environment variable is already set. This prevents mbx's local disk budget
+from immediately evicting a large restored bundle. The cache can grow during
+the job; set `MBX_GC_AUTO=1` in the job's environment to keep automatic cleanup.
+Self-hosted and unrecognized runners retain their existing GC policy. For a
+disposable self-hosted runner, set `MBX_GC_AUTO=0` in the job's environment to
+opt into the same behavior.
+
 The generated cache key includes the identity of the `rustc` on `PATH`
 (a hash of `rustc -vV`, the same identity Swatinem/rust-cache keys on). mbx
 keys every cached compilation on the compiler, so a store built by one

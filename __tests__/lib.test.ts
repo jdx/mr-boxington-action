@@ -7,6 +7,7 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubCacheGeneration,
+  githubObjectGcDefault,
   githubApiHeaders,
   githubTokenValue,
   isEmptyExport,
@@ -262,5 +263,32 @@ describe('save policy', () => {
     expect(shouldSave('workflow_dispatch', 'refs/heads/benchmark', 'main', true)).toBe(true)
     expect(shouldSave('pull_request', 'refs/pull/1/merge', 'main', true)).toBe(false)
     expect(shouldSave('push', 'refs/heads/topic', 'main', true)).toBe(false)
+  })
+})
+
+describe('object cache GC policy', () => {
+  it('keeps imported objects on GitHub-hosted runners', () => {
+    expect(githubObjectGcDefault('github', 'objects', {
+      RUNNER_ENVIRONMENT: 'github-hosted'
+    })).toBe('0')
+  })
+
+  it.each(['1', '0', 'true', 'false', ''])('preserves explicit MBX_GC_AUTO=%s', value => {
+    expect(githubObjectGcDefault('github', 'objects', {
+      RUNNER_ENVIRONMENT: 'github-hosted', MBX_GC_AUTO: value
+    })).toBeUndefined()
+  })
+
+  it.each(['self-hosted', undefined, 'unknown'])('preserves GC on %s runners', runner => {
+    expect(githubObjectGcDefault('github', 'objects', {
+      RUNNER_ENVIRONMENT: runner
+    })).toBeUndefined()
+  })
+
+  it('leaves target, local, and server caches alone', () => {
+    const env = {RUNNER_ENVIRONMENT: 'github-hosted'}
+    expect(githubObjectGcDefault('github', 'target', env)).toBeUndefined()
+    expect(githubObjectGcDefault('local', 'objects', env)).toBeUndefined()
+    expect(githubObjectGcDefault('server', 'objects', env)).toBeUndefined()
   })
 })

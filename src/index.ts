@@ -17,6 +17,7 @@ import {
   generatedKey,
   generatedRestoreKey,
   githubCacheGeneration,
+  githubObjectGcDefault,
   githubApiHeaders,
   githubTokenValue,
   isEmptyExport,
@@ -254,6 +255,11 @@ async function main(): Promise<void> {
   const githubCacheMode = parseGithubCacheMode(core.getInput('github-cache-mode'))
   const targetCache = backend === 'github' && githubCacheMode === 'target'
   if (backend === 'github') requireGithubCacheRuntime()
+  const gcAuto = githubObjectGcDefault(backend, githubCacheMode)
+  if (gcAuto !== undefined) {
+    core.exportVariable('MBX_GC_AUTO', gcAuto)
+    core.info('Disabled automatic mbx cache GC for this GitHub-hosted object-cache job')
+  }
   const githubToken = githubTokenValue(core.getInput('github-token'))
   if (githubToken) core.setSecret(githubToken)
   let installed = targetCache ? undefined : await setupMbx(core.getInput('version'), githubToken)

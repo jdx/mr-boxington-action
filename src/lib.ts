@@ -3,6 +3,21 @@ import {createHash} from 'node:crypto'
 export type Backend = 'local' | 'github' | 'server'
 export type GithubCacheMode = 'objects' | 'target'
 
+/** Keep a restored object bundle available for the lifetime of a hosted job. */
+export function githubObjectGcDefault(
+  backend: Backend,
+  mode: GithubCacheMode,
+  env: NodeJS.ProcessEnv = process.env
+): string | undefined {
+  if (
+    backend === 'github' &&
+    mode === 'objects' &&
+    env.RUNNER_ENVIRONMENT === 'github-hosted' &&
+    env.MBX_GC_AUTO === undefined
+  ) return '0'
+  return undefined
+}
+
 export interface CallingCardRow {
   label: string
   value: string

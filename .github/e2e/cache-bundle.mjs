@@ -36,7 +36,11 @@ const isolatedEnv = {
   ...process.env,
   MBX_CACHE_DIR: importedCache,
   MBX_TARGET_ROOT: importedTargets,
-  MBX_STATS_REPORT: report
+  MBX_STATS_REPORT: report,
+  // A restored bundle may exceed the runner's local GC budget. The action's
+  // hosted-runner policy must keep it available even when collection is due.
+  MBX_GC_MAX_SIZE: '1B',
+  MBX_GC_INTERVAL: '0s'
 }
 run(['cache', 'import', bundle], isolatedEnv)
 run(['build', '--locked', '--manifest-path', fixture], isolatedEnv)
@@ -46,3 +50,7 @@ if (!Number.isInteger(stats.hits) || stats.hits < 1) {
   throw new Error(`imported closure produced no cache hit: ${JSON.stringify(stats)}`)
 }
 console.log(`Imported closure produced ${stats.hits} cache hit(s)`)
+
+// GC runs after the build. A hit alone would miss eviction at that point;
+// the post phase must still be able to export the completed command's closure.
+run(['cache', 'export', '--group', exportGroup, path.join(runnerTemp, 'mbx-e2e-reexport.tar')], isolatedEnv)
