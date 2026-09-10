@@ -1,6 +1,23 @@
 # Changelog
 
 ---
+## [1.3.1](https://github.com/jdx/mr-boxington-action/compare/v1.3.0..v1.3.1) - 2026-09-10
+
+### 🐛 Bug Fixes
+
+- **(cache)** preserve imported objects on hosted runners (#37) by [@jdx](https://github.com/jdx) in [#37](https://github.com/jdx/mr-boxington-action/pull/37)
+
+### 📚 Documentation
+
+- drop the CI performance warning (#32) by [@jdx](https://github.com/jdx) in [#32](https://github.com/jdx/mr-boxington-action/pull/32)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps)** bump zizmorcore/zizmor-action from 0.6.2 to 0.6.3 (#34) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#34](https://github.com/jdx/mr-boxington-action/pull/34)
+- **(deps-dev)** bump vitest from 4.1.11 to 5.0.0 (#36) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#36](https://github.com/jdx/mr-boxington-action/pull/36)
+- **(deps-dev)** bump @types/node from 26.4.0 to 26.4.1 (#35) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#35](https://github.com/jdx/mr-boxington-action/pull/35)
+
+---
 ## [1.3.0](https://github.com/jdx/mr-boxington-action/compare/v1.2.0..v1.3.0) - 2026-09-05
 
 ### 🚀 Features
