@@ -9,6 +9,7 @@ import {constants} from 'node:fs'
 import {homedir} from 'node:os'
 import path from 'node:path'
 import {
+  type BundleForm,
   cacheLinksValue,
   cacheRevision,
   canReuseCachedMbx,
@@ -30,6 +31,7 @@ import {
   releaseTarget,
   rustcIdentityArgs,
   shouldSave,
+  supportsDirectoryBundle,
   toolchainSegment,
   verifiedReleaseAsset,
   type GithubRelease,
@@ -48,8 +50,13 @@ const CACHE_HIT_STATE = 'mbx-cache-hit'
 const CACHE_ARCHIVE_STATE = 'mbx-cache-archive'
 const CACHE_EXPORT_GROUP_STATE = 'mbx-cache-export-group'
 const CACHE_PATHS_STATE = 'mbx-cache-paths'
+const CACHE_BUNDLE_FORM_STATE = 'mbx-cache-bundle-form'
 const MBX_STATE = 'mbx-bin'
 const CACHE_ARCHIVE_NAME = 'github-actions-cache-v1.tar'
+// A directory rather than a tar. `actions/cache` archives whatever path it is
+// given, so a tar inside its archive means every byte is written twice on
+// restore: once when it unpacks, and again when `mbx cache import` does.
+const CACHE_BUNDLE_NAME = 'github-actions-cache-v1'
 const TARGET_TOOL_DIRECTORY = 'mbx-target-tool'
 
 interface MbxInstallation {
@@ -302,11 +309,16 @@ async function main(): Promise<void> {
   }
 
   let cacheArchive = ''
+  let bundleForm: BundleForm = 'tar'
   if (githubCacheMode === 'objects') {
     if (!installed) throw new Error('mbx setup did not complete')
+    bundleForm = supportsDirectoryBundle(installed.version) ? 'directory' : 'tar'
     const cacheDir = await capture(installed.bin, ['cache', 'dir'])
     await mkdir(cacheDir, {recursive: true})
-    cacheArchive = path.join(cacheDir, CACHE_ARCHIVE_NAME)
+    cacheArchive = path.join(
+      cacheDir,
+      bundleForm === 'directory' ? CACHE_BUNDLE_NAME : CACHE_ARCHIVE_NAME
+    )
   }
   const exportGroup =
     githubCacheMode === 'objects'
@@ -317,7 +329,11 @@ async function main(): Promise<void> {
     core.exportVariable('MBX_REMOTE_URL', '')
     core.exportVariable('MBX_TARGET_VIEWS', '0')
   }
-  const generation = githubCacheGeneration(core.getInput('cache-generation'), githubCacheMode)
+  const generation = githubCacheGeneration(
+    core.getInput('cache-generation'),
+    githubCacheMode,
+    bundleForm
+  )
   const requestedToolchain = core.getInput('toolchain')
   const toolchain = toolchainSegment(await rustcIdentity(requestedToolchain))
   if (toolchain === 'norust') {
@@ -388,6 +404,7 @@ async function main(): Promise<void> {
   core.info(restoredKey ? `Restored mbx cache from ${restoredKey}` : 'No mbx cache found')
 
   core.saveState(CACHE_ARCHIVE_STATE, cacheArchive)
+  core.saveState(CACHE_BUNDLE_FORM_STATE, bundleForm)
   core.saveState(CACHE_EXPORT_GROUP_STATE, exportGroup)
   core.saveState(CACHE_PATHS_STATE, JSON.stringify(cachePaths))
   core.saveState(CACHE_KEY_STATE, primaryKey)
@@ -413,7 +430,15 @@ async function main(): Promise<void> {
   await leaveCallingCard(note, [
     {label: 'mbx', value: installed.version},
     {label: 'Backend', value: 'GitHub Actions cache'},
-    {label: 'Payload', value: githubCacheMode === 'target' ? 'Cargo target tree' : 'mbx objects'},
+    {
+      label: 'Payload',
+      value:
+        githubCacheMode === 'target'
+          ? 'Cargo target tree'
+          : bundleForm === 'directory'
+            ? 'mbx objects (directory)'
+            : 'mbx objects (tar)'
+    },
     {label: 'Cache', value: cacheResult},
     {label: 'Policy', value: save ? 'save after a successful job' : 'restore only'}
   ])
@@ -445,8 +470,13 @@ async function post(): Promise<void> {
     core.info(`Saved mbx target cache ${primaryKey} (ID ${cacheId})`)
     return
   }
+  const bundleForm = (core.getState(CACHE_BUNDLE_FORM_STATE) || 'tar') as BundleForm
+  const exportArgs =
+    bundleForm === 'directory'
+      ? ['cache', 'export', '--group', group, '--format', 'directory', archive]
+      : ['cache', 'export', '--group', group, archive]
   let output = ''
-  const exportExitCode = await exec.exec(mbx, ['cache', 'export', '--group', group, archive], {
+  const exportExitCode = await exec.exec(mbx, exportArgs, {
     ignoreReturnCode: true,
     listeners: {
       stdout: data => (output += data.toString()),

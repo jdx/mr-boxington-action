@@ -66,6 +66,16 @@ smaller because they omit the Cargo registry, which Cargo then downloads again
 inside the build; in paired measurements on GitHub-hosted runners it restored
 and built a small edit roughly ten seconds slower than the `target` payload.
 
+From mbx 1.12.0 the bundle is a directory instead of a tar. `actions/cache`
+archives whatever path it is given, so a tar meant every byte was written twice
+on restore: once when the cache action unpacked its own archive, and again when
+the importer unpacked the tar inside it. The importer now reads the restored
+tree in place. On a warm restore of a 4,071-object closure this took
+`mbx cache import` from 6.5s to 2.0s, against roughly 1.3s more spent inside
+the cache action's own restore, which handles many files less quickly than one
+archive. Earlier mbx versions keep the tar form. The two use separate cache
+keys, so the first job after an mbx version crosses 1.12.0 restores cold.
+
 On GitHub-hosted runners, `objects` mode sets `MBX_GC_AUTO=0` for the job unless
 that environment variable is already set. This prevents mbx's local disk budget
 from immediately evicting a large restored bundle. The cache can grow during

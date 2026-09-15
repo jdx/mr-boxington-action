@@ -19,6 +19,7 @@ import {
   requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
+  supportsDirectoryBundle,
   shouldSave,
   toolchainSegment,
   verifiedReleaseAsset
@@ -199,6 +200,31 @@ describe('inputs', () => {
     )
     expect(githubCacheGeneration('v2', 'objects')).toBe('v2')
     expect(githubCacheGeneration('v2', 'target')).toBe('v2-target')
+  })
+
+  it('keeps a directory bundle out of the tar key space', () => {
+    // A tar entry and a directory entry cannot restore each other, so they
+    // must never share a key. The tar form keeps the bare generation it has
+    // always used, so entries saved before this existed still restore.
+    expect(githubCacheGeneration('v2', 'objects', 'tar')).toBe('v2')
+    expect(githubCacheGeneration('v2', 'objects')).toBe('v2')
+    expect(githubCacheGeneration('v2', 'objects', 'directory')).toBe('v2-dir')
+    expect(githubCacheGeneration('v2', 'target', 'directory')).toBe('v2-target')
+  })
+
+  it('uses a directory bundle only where mbx understands one', () => {
+    // `--format directory` arrived in 1.12.0; an older binary fails the export.
+    expect(supportsDirectoryBundle('1.12.0')).toBe(true)
+    expect(supportsDirectoryBundle('v1.12.0')).toBe(true)
+    expect(supportsDirectoryBundle('1.12.3')).toBe(true)
+    expect(supportsDirectoryBundle('1.13.0')).toBe(true)
+    expect(supportsDirectoryBundle('2.0.0')).toBe(true)
+    expect(supportsDirectoryBundle('1.11.1')).toBe(false)
+    expect(supportsDirectoryBundle('1.8.0')).toBe(false)
+    expect(supportsDirectoryBundle('0.20.0')).toBe(false)
+    // Anything unreadable falls back to the form every version can read.
+    expect(supportsDirectoryBundle('latest')).toBe(false)
+    expect(supportsDirectoryBundle('')).toBe(false)
   })
 
   it('recognizes an export group with no completed build', () => {

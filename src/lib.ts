@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto'
 
 export type Backend = 'local' | 'github' | 'server'
 export type GithubCacheMode = 'objects' | 'target'
+export type BundleForm = 'tar' | 'directory'
 
 /** Keep a restored object bundle available for the lifetime of a hosted job. */
 export function githubObjectGcDefault(
@@ -186,16 +187,35 @@ export function generatedRestoreKey(
 }
 
 /**
- * Generation segment of a generated key, scoped by payload so the two cache
- * formats can never restore each other. `objects` keeps the bare generation
- * because that is the key space its entries were saved under before `target`
- * became the default.
+ * Whether an installed mbx can read and write directory-form bundles.
+ *
+ * `mbx cache export --format directory` arrived in mbx 1.12.0, and an older
+ * binary rejects the flag outright. The form has to follow the version that is
+ * actually installed, which the action learns before it builds a cache key.
+ * Anything that does not parse is treated as too old: falling back to a tar
+ * costs a slower restore, while guessing wrong fails the export.
+ */
+export function supportsDirectoryBundle(version: string): boolean {
+  const parsed = /^(\d+)\.(\d+)\./.exec(version.trim().replace(/^v/, ''))
+  if (!parsed) return false
+  const major = Number(parsed[1])
+  const minor = Number(parsed[2])
+  return major > 1 || (major === 1 && minor >= 12)
+}
+
+/**
+ * Generation segment of a generated key, scoped by payload so no two cache
+ * formats can restore each other. `objects` keeps the bare generation because
+ * that is the key space its entries were saved under before `target` became
+ * the default; a directory bundle is a third payload and takes its own.
  */
 export function githubCacheGeneration(
   generation: string,
-  mode: GithubCacheMode
+  mode: GithubCacheMode,
+  bundle: BundleForm = 'tar'
 ): string {
-  return mode === 'objects' ? generation : `${generation}-${mode}`
+  if (mode !== 'objects') return `${generation}-${mode}`
+  return bundle === 'directory' ? `${generation}-dir` : generation
 }
 
 /** The export error that means a job completed without running an mbx build. */
