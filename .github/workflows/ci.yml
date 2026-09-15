@@ -46,13 +46,15 @@ jobs:
       - run: mbx cache dir
       # The toolchain segment is what keeps one toolchain's store off another's
       # key, so assert the generated key actually carries one on every runner.
+      # The generation ahead of it is not a single segment: a directory bundle
+      # adds its own so it cannot share a key space with a tar one.
       - name: Check the cache key is scoped by toolchain
         env:
           PRIMARY_KEY: ${{ steps.mbx.outputs.cache-primary-key }}
         # A block scalar, because a plain one cannot hold the `: ` this
         # command's failure message would otherwise put in it.
         run: |
-          node -e "const k = process.env.PRIMARY_KEY; if (!/-mbx-[^-]+-(rust-[0-9a-f]{12}|norust)-/.test(k)) { console.error('cache key is not scoped by toolchain: ' + k); process.exit(1) }"
+          node -e "const k = process.env.PRIMARY_KEY; if (!/-mbx-.+-(rust-[0-9a-f]{12}|norust)-/.test(k)) { console.error('cache key is not scoped by toolchain: ' + k); process.exit(1) }"
       - name: Check native link cache policy
         run: node -e "if ((process.platform === 'linux') !== (process.env.MBX_CACHE_LINKS === '1')) process.exit(1)"
       - name: Check imported objects survive automatic GC
