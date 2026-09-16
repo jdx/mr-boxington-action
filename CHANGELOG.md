@@ -1,6 +1,18 @@
 # Changelog
 
 ---
+## [1.4.0](https://github.com/jdx/mr-boxington-action/compare/v1.3.1..v1.4.0) - 2026-09-16
+
+### 🚀 Features
+
+- restore object-mode caches from a directory bundle (#41) by [@jdx](https://github.com/jdx) in [#41](https://github.com/jdx/mr-boxington-action/pull/41)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps)** bump zizmorcore/zizmor-action from 0.6.3 to 0.6.4 (#38) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#38](https://github.com/jdx/mr-boxington-action/pull/38)
+- **(deps-dev)** bump @types/node from 26.4.1 to 26.5.1 (#39) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#39](https://github.com/jdx/mr-boxington-action/pull/39)
+
+---
 ## [1.3.1](https://github.com/jdx/mr-boxington-action/compare/v1.3.0..v1.3.1) - 2026-09-10
 
 ### 🐛 Bug Fixes
