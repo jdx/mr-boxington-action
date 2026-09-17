@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [1.4.1](https://github.com/jdx/mr-boxington-action/compare/v1.4.0..v1.4.1) - 2026-09-17
+
+### ⚙️ Miscellaneous Tasks
+
+- add entire trail runners (#42) by [@jdx](https://github.com/jdx) in [#42](https://github.com/jdx/mr-boxington-action/pull/42)
+
+---
 ## [1.4.0](https://github.com/jdx/mr-boxington-action/compare/v1.3.1..v1.4.0) - 2026-09-16
 
 ### 🚀 Features
