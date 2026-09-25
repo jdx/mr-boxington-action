@@ -276,6 +276,7 @@ async function configureRemote(mbx: string): Promise<RemoteStatus> {
   for (const [name, value] of Object.entries(variables)) core.exportVariable(name, value)
 
   let report = ''
+  let spawnError = ''
   try {
     await exec.exec(mbx, ['doctor', '--json'], {
       ignoreReturnCode: true,
@@ -283,9 +284,13 @@ async function configureRemote(mbx: string): Promise<RemoteStatus> {
       listeners: {stdout: data => (report += data.toString())}
     })
   } catch (error) {
-    core.debug(`mbx doctor failed to run: ${String(error)}`)
+    spawnError = String(error)
   }
-  const status = remoteStatus(report)
+  // A doctor that never started says why in the one warning the unknown state
+  // already produces, rather than in a debug line nobody sees.
+  const status = spawnError
+    ? {state: 'unknown' as const, detail: `mbx doctor could not run: ${spawnError}`}
+    : remoteStatus(report)
   switch (status.state) {
     case 'missing':
       throw new Error(
