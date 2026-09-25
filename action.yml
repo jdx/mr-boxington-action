@@ -1,5 +1,5 @@
 name: mr boxington
-description: Set up mbx with local storage, GitHub Actions cache, or an mbx cache server
+description: Set up mbx with local storage, GitHub Actions cache, or a remote cache server or bucket
 author: jdx
 
 branding:
@@ -8,7 +8,7 @@ branding:
 
 inputs:
   backend:
-    description: Cache backend, either "local", "github", or "server"
+    description: Cache backend, either "local", "github", or "remote" ("server" is an alias for "remote")
     default: github
   version:
     description: mbx release version to install, such as "0.4.0", or "latest"; when omitted, use mbx from PATH or install latest
@@ -46,24 +46,30 @@ inputs:
   cache-links:
     description: Cache native links; "auto" enables this on Linux
     default: auto
+  remote-url:
+    description: Remote cache URL for the remote backend, either a cache server or an s3:// bucket; when omitted, MBX_REMOTE_URL from an earlier step is kept
+    required: false
   server-url:
-    description: Base URL for the server backend
+    description: Alias for remote-url
     required: false
   namespace:
-    description: Cache namespace for the server backend
+    description: Cache namespace for the remote backend; when omitted, MBX_REMOTE_NAMESPACE from an earlier step is kept
     required: false
   token:
-    description: Bearer token for the server backend
+    description: Bearer token for a remote cache server
     required: false
   token-file:
-    description: File containing a bearer token for the server backend
+    description: File containing a bearer token for a remote cache server
     required: false
   oidc-audience:
-    description: OIDC audience for the server backend; the job needs id-token write permission
+    description: OIDC audience for a remote cache server; the job needs id-token write permission
+    required: false
+  remote-mode:
+    description: Requested remote mode (read-write, read-only, or write-only); when omitted, MBX_REMOTE_MODE from an earlier step is kept, and mbx defaults to read-write
     required: false
   server-mode:
-    description: Requested server mode (read-write, read-only, or write-only)
-    default: read-write
+    description: Alias for remote-mode
+    required: false
 
 outputs:
   cache-hit:

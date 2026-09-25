@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto'
 import path from 'node:path'
 
-export type Backend = 'local' | 'github' | 'server'
+export type Backend = 'local' | 'github' | 'remote'
 export type GithubCacheMode = 'objects' | 'target'
 export type BundleForm = 'tar' | 'directory'
 
@@ -101,8 +101,114 @@ export function callingCard(note: string, rows: CallingCardRow[]): string {
 }
 
 export function parseBackend(value: string): Backend {
-  if (value === 'local' || value === 'github' || value === 'server') return value
-  throw new Error(`backend must be "local", "github", or "server", got ${JSON.stringify(value)}`)
+  if (value === 'local' || value === 'github' || value === 'remote') return value
+  // `server` named this backend before an s3:// bucket could stand in for a
+  // cache server, and existing workflows still spell it that way.
+  if (value === 'server') return 'remote'
+  throw new Error(`backend must be "local", "github", or "remote", got ${JSON.stringify(value)}`)
+}
+
+/** One setting under two input names, which must agree when both are given. */
+export function aliasedInput(
+  name: string,
+  value: string,
+  alias: string,
+  aliasValue: string
+): string {
+  if (value && aliasValue && value !== aliasValue) {
+    throw new Error(`${name} and ${alias} name the same setting with different values; set only ${name}`)
+  }
+  return value || aliasValue
+}
+
+export interface RemoteInputs {
+  url: string
+  namespace: string
+  token: string
+  tokenFile: string
+  oidcAudience: string
+  mode: string
+}
+
+/**
+ * The `MBX_REMOTE_*` variables the remote backend exports: one per input that
+ * was given, and nothing else.
+ *
+ * A setting without an input keeps whatever an earlier step exported, such as
+ * a runner action that points mbx at its own bucket, and mbx applies its own
+ * default when nothing set it. Exporting an empty or default value here would
+ * overwrite that step's choice.
+ */
+export function remoteExports(inputs: RemoteInputs): Record<string, string> {
+  if (inputs.mode && !['read-write', 'read-only', 'write-only'].includes(inputs.mode)) {
+    throw new Error(`invalid remote-mode ${JSON.stringify(inputs.mode)}`)
+  }
+  if ([inputs.token, inputs.tokenFile, inputs.oidcAudience].filter(Boolean).length > 1) {
+    throw new Error('set only one of token, token-file, or oidc-audience')
+  }
+  const variables: [string, string][] = [
+    ['MBX_REMOTE_URL', inputs.url],
+    ['MBX_REMOTE_NAMESPACE', inputs.namespace],
+    ['MBX_REMOTE_MODE', inputs.mode],
+    ['MBX_REMOTE_TOKEN', inputs.token],
+    ['MBX_REMOTE_TOKEN_FILE', inputs.tokenFile],
+    ['MBX_REMOTE_OIDC_AUDIENCE', inputs.oidcAudience]
+  ]
+  return Object.fromEntries(variables.filter(([, value]) => value))
+}
+
+export interface RemoteStatus {
+  /**
+   * `ready` when mbx built a client and reached the remote, or its write
+   * policy disables the remote for this run; `unreachable` when the
+   * configuration is sound but the connection check failed; `missing` when no
+   * URL is configured anywhere mbx looks; `invalid` when mbx rejects the
+   * configuration, which fails every build that uses it; `unknown` when mbx
+   * gave no report.
+   */
+  state: 'ready' | 'unreachable' | 'missing' | 'invalid' | 'unknown'
+  detail: string
+  /** Configured and effective mode, when a URL is configured. */
+  policy?: string
+}
+
+interface DoctorCheck {
+  severity: string
+  name: string
+  detail: string
+}
+
+/**
+ * What `mbx doctor --json` says about the remote cache.
+ *
+ * mbx resolves the remote from the environment and its user config file, so
+ * asking it covers every place a URL can come from and applies the same checks
+ * a build does before its first compilation.
+ */
+export function remoteStatus(doctorOutput: string): RemoteStatus {
+  let checks: DoctorCheck[]
+  try {
+    const report = JSON.parse(doctorOutput) as {checks?: DoctorCheck[]}
+    if (!Array.isArray(report.checks)) throw new Error('no checks')
+    checks = report.checks
+  } catch {
+    return {state: 'unknown', detail: 'mbx doctor --json produced no report'}
+  }
+  const config = checks.find(check => check.name === 'config')
+  if (config?.severity === 'fail') return {state: 'invalid', detail: config.detail}
+  const remote = checks.find(check => check.name === 'remote')
+  if (!remote) return {state: 'unknown', detail: 'mbx doctor reported no remote check'}
+  const policy = checks.find(check => check.name === 'policy')?.detail
+  if (remote.severity === 'fail') {
+    // mbx wraps only a failed probe of a client it could build this way; any
+    // other failure is a configuration the build would refuse too.
+    const state = remote.detail.startsWith('connection check failed') ? 'unreachable' : 'invalid'
+    return {state, detail: remote.detail, policy}
+  }
+  if (remote.detail.startsWith('not configured')) {
+    return {state: 'missing', detail: remote.detail}
+  }
+  return {state: 'ready', detail: remote.detail, policy}
 }
 
 export function parseGithubCacheMode(value: string): GithubCacheMode {
