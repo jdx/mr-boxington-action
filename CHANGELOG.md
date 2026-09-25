@@ -1,6 +1,18 @@
 # Changelog
 
 ---
+## [1.6.0](https://github.com/jdx/mr-boxington-action/compare/v1.5.0..v1.6.0) - 2026-09-25
+
+### 🚀 Features
+
+- **(cache)** opt in to saving from pull requests and protected branches (#48) by [@garysassano](https://github.com/garysassano) in [#48](https://github.com/jdx/mr-boxington-action/pull/48)
+- add a remote backend that keeps MBX_REMOTE_* settings from earlier steps (#53) by [@jdx](https://github.com/jdx) in [#53](https://github.com/jdx/mr-boxington-action/pull/53)
+
+### 🐛 Bug Fixes
+
+- **(cache)** restore a saving pull request's own entries before its base (#52) by [@garysassano](https://github.com/garysassano) in [#52](https://github.com/jdx/mr-boxington-action/pull/52)
+
+---
 ## [1.5.0](https://github.com/jdx/mr-boxington-action/compare/v1.4.0..v1.5.0) - 2026-09-24
 
 ### 🚀 Features
