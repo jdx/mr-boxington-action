@@ -9,6 +9,7 @@ import {constants} from 'node:fs'
 import {homedir} from 'node:os'
 import path from 'node:path'
 import {
+  aliasedInput,
   type BundleForm,
   cacheLinksValue,
   cacheRevision,
@@ -30,6 +31,9 @@ import {
   parsedMbxVersion,
   pullRequestRestoreKey,
   type PullRequestRepositories,
+  remoteExports,
+  remoteStatus,
+  type RemoteStatus,
   requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
@@ -247,28 +251,61 @@ async function stageTargetCacheMbx(
   return {...installed, bin}
 }
 
-function configureServer(): void {
-  const url = core.getInput('server-url', {required: true})
-  const namespace = core.getInput('namespace', {required: true})
-  const token = core.getInput('token')
-  const tokenFile = core.getInput('token-file')
-  const audience = core.getInput('oidc-audience')
-  const mode = core.getInput('server-mode')
-  if (!['read-write', 'read-only', 'write-only'].includes(mode)) {
-    throw new Error(`invalid server-mode ${JSON.stringify(mode)}`)
+/**
+ * Export the remote settings the inputs name, then ask mbx what it resolved.
+ *
+ * Inputs win over the environment, but a setting without an input is left as
+ * an earlier step exported it. mbx's own report decides whether that adds up
+ * to a usable remote, since only mbx knows every place a URL can come from.
+ */
+async function configureRemote(mbx: string): Promise<RemoteStatus> {
+  const variables = remoteExports({
+    url: aliasedInput('remote-url', core.getInput('remote-url'), 'server-url', core.getInput('server-url')),
+    namespace: core.getInput('namespace'),
+    token: core.getInput('token'),
+    tokenFile: core.getInput('token-file'),
+    oidcAudience: core.getInput('oidc-audience'),
+    mode: aliasedInput(
+      'remote-mode',
+      core.getInput('remote-mode'),
+      'server-mode',
+      core.getInput('server-mode')
+    )
+  })
+  if (variables.MBX_REMOTE_TOKEN) core.setSecret(variables.MBX_REMOTE_TOKEN)
+  for (const [name, value] of Object.entries(variables)) core.exportVariable(name, value)
+
+  let report = ''
+  try {
+    await exec.exec(mbx, ['doctor', '--json'], {
+      ignoreReturnCode: true,
+      silent: true,
+      listeners: {stdout: data => (report += data.toString())}
+    })
+  } catch (error) {
+    core.debug(`mbx doctor failed to run: ${String(error)}`)
   }
-  if ([token, tokenFile, audience].filter(Boolean).length > 1) {
-    throw new Error('set only one of token, token-file, or oidc-audience')
+  const status = remoteStatus(report)
+  switch (status.state) {
+    case 'missing':
+      throw new Error(
+        'The remote backend found no remote cache to use. Set the remote-url and namespace ' +
+          'inputs, export MBX_REMOTE_URL and MBX_REMOTE_NAMESPACE in an earlier step, or ' +
+          "configure [remote] in mbx's user config file."
+      )
+    case 'invalid':
+      throw new Error(`mbx rejects the remote cache configuration: ${status.detail}`)
+    case 'unreachable':
+      core.warning(`mbx could not reach the remote cache: ${status.detail}`)
+      break
+    case 'unknown':
+      core.warning(`Could not confirm the remote cache configuration: ${status.detail}`)
+      break
+    case 'ready':
+      core.info(`Remote cache: ${status.detail}`)
+      break
   }
-  core.exportVariable('MBX_REMOTE_URL', url)
-  core.exportVariable('MBX_REMOTE_NAMESPACE', namespace)
-  core.exportVariable('MBX_REMOTE_MODE', mode)
-  if (token) {
-    core.setSecret(token)
-    core.exportVariable('MBX_REMOTE_TOKEN', token)
-  }
-  if (tokenFile) core.exportVariable('MBX_REMOTE_TOKEN_FILE', tokenFile)
-  if (audience) core.exportVariable('MBX_REMOTE_OIDC_AUDIENCE', audience)
+  return status
 }
 
 async function main(): Promise<void> {
@@ -307,17 +344,18 @@ async function main(): Promise<void> {
     return
   }
 
-  if (backend === 'server') {
+  if (backend === 'remote') {
     if (!installed) throw new Error('mbx setup did not complete')
     core.info(`Set up mbx ${installed.version}`)
     core.setOutput('mbx-version', installed.version)
     core.saveState(POST_STATE, backend)
     core.saveState(MBX_STATE, installed.bin)
-    configureServer()
+    const remote = await configureRemote(installed.bin)
     await leaveCallingCard('I have made the necessary arrangements.', [
       {label: 'mbx', value: installed.version},
-      {label: 'Backend', value: 'cache server'},
-      {label: 'Mode', value: core.getInput('server-mode')}
+      {label: 'Backend', value: 'remote cache'},
+      {label: 'Remote', value: remote.detail},
+      ...(remote.policy ? [{label: 'Mode', value: remote.policy}] : [])
     ])
     return
   }

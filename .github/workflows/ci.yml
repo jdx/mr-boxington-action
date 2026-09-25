@@ -153,23 +153,80 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      # `server` and its input names predate `remote` and must keep working.
+      # The host never resolves, so mbx's connection check fails and the
+      # action only warns: the configuration itself is one mbx accepts.
       - uses: ./
         with:
           backend: server
           server-url: https://cache.example.com
           namespace: action/smoke-test
-          oidc-audience: mbx-cache
+          token: smoke-test-token
       - name: Check exported configuration
         run: |
           test "$MBX_REMOTE_URL" = https://cache.example.com
           test "$MBX_REMOTE_NAMESPACE" = action/smoke-test
-          test "$MBX_REMOTE_OIDC_AUDIENCE" = mbx-cache
-          test "$MBX_REMOTE_MODE" = read-write
+          test "$MBX_REMOTE_TOKEN" = smoke-test-token
+          # No mode input, so none is exported and mbx applies its default.
+          test -z "${MBX_REMOTE_MODE+set}"
           mbx --version
+
+  remote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # Stands in for a runner action that points mbx at its own bucket. The
+      # endpoint is a closed loopback port, so the probe fails at once without
+      # sending these placeholder credentials anywhere.
+      - name: Configure a remote in an earlier step
+        run: |
+          {
+            echo MBX_REMOTE_URL=s3://smoke-test/cache/mbx
+            echo MBX_REMOTE_NAMESPACE=from-environment
+            echo MBX_REMOTE_MODE=read-only
+            echo MBX_REMOTE_S3_ENDPOINT=http://127.0.0.1:9
+            echo MBX_HTTP_RETRIES=0
+            echo AWS_ACCESS_KEY_ID=placeholder
+            echo AWS_SECRET_ACCESS_KEY=placeholder
+            echo AWS_REGION=us-east-1
+          } >> "$GITHUB_ENV"
+      # An input still wins over the environment for the setting it names.
+      - uses: ./
+        with:
+          backend: remote
+          namespace: from-input
+      - name: Check the earlier configuration survived
+        run: |
+          test "$MBX_REMOTE_URL" = s3://smoke-test/cache/mbx
+          test "$MBX_REMOTE_NAMESPACE" = from-input
+          test "$MBX_REMOTE_MODE" = read-only
+          test "$AWS_ACCESS_KEY_ID" = placeholder
+          test "$AWS_SECRET_ACCESS_KEY" = placeholder
+          mbx --version
+
+  remote-missing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # With no remote anywhere, the backend must fail rather than leave mbx
+      # quietly building against the local cache.
+      - id: mbx
+        continue-on-error: true
+        uses: ./
+        with:
+          backend: remote
+      - name: Check the step failed
+        env:
+          OUTCOME: ${{ steps.mbx.outcome }}
+        run: test "$OUTCOME" = failure
 
   final:
     permissions: {}
-    needs: [action, server, target, test, toolchain]
+    needs: [action, remote, remote-missing, server, target, test, toolchain]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     # Run on success or upstream failure but skip when the workflow is cancelled

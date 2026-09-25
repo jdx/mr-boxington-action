@@ -1,7 +1,8 @@
 # mr-boxington-action
 
 Set up [mr boxington](https://github.com/jdx/mr-boxington) and use its local
-store directly or back it with GitHub Actions cache or an mbx-compatible server. When
+store directly or back it with GitHub Actions cache, an mbx-compatible server, or an S3
+bucket. When
 `version` is omitted, the action uses `mbx` from `PATH` and downloads the latest
 release only when it is absent. Setting `version` always installs that release.
 
@@ -179,9 +180,10 @@ To keep one workflow's entries apart from another's, changing `cache-generation`
 
 The `cache-save-eligible` and `cache-save-reason` outputs say whether a run may attempt a save and why, for example `same-repository pull request` or `fork pull request`. An eligible run still skips the save after an exact cache hit or when the job produced nothing to cache.
 
-## Cache server
+## Remote cache
 
-With OIDC:
+The `remote` backend points mbx at a cache server or an `s3://` bucket. With a
+cache server and OIDC:
 
 ```yaml
 permissions:
@@ -192,8 +194,8 @@ steps:
   - uses: actions/checkout@v7
   - uses: jdx/mr-boxington-action@v1
     with:
-      backend: server
-      server-url: https://cache.example.com
+      backend: remote
+      remote-url: https://cache.example.com
       namespace: acme/backend
       oidc-audience: mbx-cache
   - run: mbx build --workspace --all-features
@@ -204,22 +206,66 @@ Or pass a secret bearer token:
 ```yaml
 - uses: jdx/mr-boxington-action@v1
   with:
-    backend: server
-    server-url: https://cache.example.com
+    backend: remote
+    remote-url: https://cache.example.com
     namespace: acme/backend
     token: ${{ secrets.MBX_REMOTE_TOKEN }}
 ```
 
-The action exports the corresponding `MBX_REMOTE_*` variables for subsequent
-steps. mbx itself reduces pull requests and unprotected branches to read-only
-and disables the remote on tags and releases. The server must still enforce its
-own authorization policy.
+An S3 bucket authenticates with the `AWS_*` variables instead, which
+`aws-actions/configure-aws-credentials` exports:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+
+steps:
+  - uses: actions/checkout@v7
+  - uses: aws-actions/configure-aws-credentials@v6
+    with:
+      role-to-assume: arn:aws:iam::123456789012:role/mbx-cache
+      aws-region: us-east-1
+  - uses: jdx/mr-boxington-action@v1
+    with:
+      backend: remote
+      remote-url: s3://acme-build-cache/mbx
+      namespace: acme/backend
+  - run: mbx build --workspace --all-features
+```
+
+Each input the backend receives is exported as the matching `MBX_REMOTE_*`
+variable. A setting without an input keeps the value an earlier step exported,
+so a step that already configured mbx's remote needs no inputs repeated here:
+
+```yaml
+- run: |
+    echo "MBX_REMOTE_URL=s3://acme-build-cache/mbx" >> "$GITHUB_ENV"
+    echo "MBX_REMOTE_NAMESPACE=acme/backend" >> "$GITHUB_ENV"
+- uses: jdx/mr-boxington-action@v1
+  with:
+    backend: remote
+```
+
+After exporting, the action runs `mbx doctor` and fails the step when mbx finds
+no remote URL in its inputs, the environment, or mbx's user config file, or
+when mbx rejects the configuration, for example a URL without a namespace. A
+remote that is configured but cannot be reached only produces a warning.
+
+mbx itself writes to the remote only from pushes to protected branches. Every
+other run, including pull requests, tags, and releases, reads only, and a
+`write-only` remote is left unused. The server or bucket policy must still
+enforce its own authorization, and a release build that must not read from a
+shared cache should not configure a remote at all.
+
+`server` is an alias for `remote`, and `server-url` and `server-mode` are
+aliases for `remote-url` and `remote-mode`.
 
 ## Inputs
 
 | Input                       | Default               | Purpose                                                                        |
 | --------------------------- | --------------------- | ------------------------------------------------------------------------------ |
-| `backend`                   | `github`              | `local`, `github`, or `server`                                                 |
+| `backend`                   | `github`              | `local`, `github`, or `remote`                                                 |
 | `version`                   |                       | mbx release version, or `latest`; when omitted, prefer `mbx` from `PATH`       |
 | `github-token`              | `${{ github.token }}` | Token used when `GITHUB_TOKEN` is not exported                                 |
 | `cache-generation`          | `v1`                  | Generated GitHub cache key generation                                          |
@@ -232,12 +278,12 @@ own authorization policy.
 | `cache-links`               | `auto`                | Cache native links; automatically enabled on Linux                             |
 | `cache-key`                 | generated             | Complete GitHub cache primary key                                              |
 | `restore-keys`              | generated             | Newline-separated GitHub restore prefixes                                      |
-| `server-url`                |                       | Required server base URL                                                       |
-| `namespace`                 |                       | Required server namespace                                                      |
-| `oidc-audience`             |                       | OIDC audience                                                                  |
-| `token`                     |                       | Secret bearer token                                                            |
-| `token-file`                |                       | Bearer-token file                                                              |
-| `server-mode`               | `read-write`          | Requested remote mode                                                          |
+| `remote-url`                |                       | Cache server URL or `s3://` bucket; keeps `MBX_REMOTE_URL` when omitted        |
+| `namespace`                 |                       | Remote namespace; keeps `MBX_REMOTE_NAMESPACE` when omitted                    |
+| `oidc-audience`             |                       | OIDC audience for a cache server                                               |
+| `token`                     |                       | Secret bearer token for a cache server                                         |
+| `token-file`                |                       | Bearer-token file for a cache server                                           |
+| `remote-mode`               |                       | Remote mode; keeps `MBX_REMOTE_MODE` when omitted, and mbx defaults to `read-write` |
 
 `save-on-workflow-dispatch` is intended for explicitly trusted cache-seeding
 and benchmark workflows. It does not affect pull requests or pushes, which

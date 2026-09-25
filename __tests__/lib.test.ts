@@ -1,6 +1,7 @@
 import path from 'node:path'
 import {describe, expect, it} from 'vitest'
 import {
+  aliasedInput,
   cacheLinksValue,
   cacheRevision,
   canReuseCachedMbx,
@@ -19,6 +20,8 @@ import {
   parseGithubCacheMode,
   parsedMbxVersion,
   pullRequestRestoreKey,
+  remoteExports,
+  remoteStatus,
   requireGithubCacheRuntime,
   releaseTarget,
   rustcIdentityArgs,
@@ -109,8 +112,9 @@ describe('inputs', () => {
   it('validates backends and versions', () => {
     expect(parseBackend('local')).toBe('local')
     expect(parseBackend('github')).toBe('github')
-    expect(parseBackend('server')).toBe('server')
-    expect(() => parseBackend('s3')).toThrow()
+    expect(parseBackend('remote')).toBe('remote')
+    expect(parseBackend('server')).toBe('remote')
+    expect(() => parseBackend('s3')).toThrow(/"local", "github", or "remote"/)
     expect(parseGithubCacheMode('objects')).toBe('objects')
     expect(parseGithubCacheMode('target')).toBe('target')
     expect(() => parseGithubCacheMode('archive')).toThrow(/github-cache-mode/)
@@ -394,11 +398,11 @@ describe('object cache GC policy', () => {
     })).toBeUndefined()
   })
 
-  it('leaves target, local, and server caches alone', () => {
+  it('leaves target, local, and remote caches alone', () => {
     const env = {RUNNER_ENVIRONMENT: 'github-hosted'}
     expect(githubObjectGcDefault('github', 'target', env)).toBeUndefined()
     expect(githubObjectGcDefault('local', 'objects', env)).toBeUndefined()
-    expect(githubObjectGcDefault('server', 'objects', env)).toBeUndefined()
+    expect(githubObjectGcDefault('remote', 'objects', env)).toBeUndefined()
   })
 })
 
@@ -413,5 +417,100 @@ describe('cargo target directory', () => {
     expect(cargoTargetDirectory('rust', '/work')).toBe(path.resolve('/work', 'rust', 'target'))
     expect(cargoTargetDirectory('rust/', '/work')).toBe(path.resolve('/work', 'rust', 'target'))
     expect(cargoTargetDirectory('/elsewhere/ws', '/work')).toBe(path.resolve('/elsewhere/ws', 'target'))
+  })
+})
+
+describe('remote backend', () => {
+  const noInputs = {url: '', namespace: '', token: '', tokenFile: '', oidcAudience: '', mode: ''}
+
+  it('exports nothing when no input is set, keeping earlier steps\' variables', () => {
+    expect(remoteExports(noInputs)).toEqual({})
+  })
+
+  it('exports exactly the inputs that were given', () => {
+    expect(
+      remoteExports({...noInputs, url: 's3://bucket/cache/mbx', namespace: 'acme', mode: 'read-only'})
+    ).toEqual({
+      MBX_REMOTE_URL: 's3://bucket/cache/mbx',
+      MBX_REMOTE_NAMESPACE: 'acme',
+      MBX_REMOTE_MODE: 'read-only'
+    })
+    expect(remoteExports({...noInputs, oidcAudience: 'mbx-cache'})).toEqual({
+      MBX_REMOTE_OIDC_AUDIENCE: 'mbx-cache'
+    })
+  })
+
+  it('rejects an unknown mode and more than one credential', () => {
+    expect(() => remoteExports({...noInputs, mode: 'readwrite'})).toThrow(/invalid remote-mode/)
+    expect(() => remoteExports({...noInputs, token: 'secret', oidcAudience: 'mbx-cache'})).toThrow(
+      /only one of token/
+    )
+  })
+
+  it('accepts either spelling of an aliased input but not two different values', () => {
+    expect(aliasedInput('remote-url', 'https://a', 'server-url', '')).toBe('https://a')
+    expect(aliasedInput('remote-url', '', 'server-url', 'https://b')).toBe('https://b')
+    expect(aliasedInput('remote-url', 'https://a', 'server-url', 'https://a')).toBe('https://a')
+    expect(() => aliasedInput('remote-url', 'https://a', 'server-url', 'https://b')).toThrow(
+      /set only remote-url/
+    )
+  })
+
+  const doctor = (...checks: {severity: string; name: string; detail: string}[]) =>
+    JSON.stringify({version: 1, checks, failures: 0, warnings: 0})
+
+  it('reads a reachable remote from mbx doctor', () => {
+    expect(
+      remoteStatus(
+        doctor(
+          {severity: 'pass', name: 'config', detail: '10 GiB budget'},
+          {severity: 'pass', name: 'policy', detail: 'configured read-write, effective read-only'},
+          {severity: 'pass', name: 'remote', detail: 's3://bucket/cache/mbx (acme) is compatible'}
+        )
+      )
+    ).toEqual({
+      state: 'ready',
+      detail: 's3://bucket/cache/mbx (acme) is compatible',
+      policy: 'configured read-write, effective read-only'
+    })
+  })
+
+  it('treats no configured URL as missing', () => {
+    expect(
+      remoteStatus(doctor({severity: 'pass', name: 'remote', detail: 'not configured; using the local cache'}))
+        .state
+    ).toBe('missing')
+  })
+
+  it('tells a failed connection apart from a configuration mbx refuses', () => {
+    expect(
+      remoteStatus(
+        doctor({
+          severity: 'fail',
+          name: 'remote',
+          detail: 'connection check failed: error sending request'
+        })
+      ).state
+    ).toBe('unreachable')
+    expect(
+      remoteStatus(
+        doctor({
+          severity: 'fail',
+          name: 'remote',
+          detail: 'a remote cache namespace is required when a URL is set'
+        })
+      ).state
+    ).toBe('invalid')
+    expect(
+      remoteStatus(doctor({severity: 'fail', name: 'config', detail: 'invalid remote.mode'}))
+    ).toEqual({state: 'invalid', detail: 'invalid remote.mode'})
+  })
+
+  it('reports an unreadable doctor as unknown', () => {
+    expect(remoteStatus('').state).toBe('unknown')
+    expect(remoteStatus('{"version":1}').state).toBe('unknown')
+    expect(remoteStatus(doctor({severity: 'pass', name: 'cargo', detail: 'cargo 1.99'})).state).toBe(
+      'unknown'
+    )
   })
 })
