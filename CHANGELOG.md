@@ -1,6 +1,24 @@
 # Changelog
 
 ---
+## [1.6.0](https://github.com/jdx/mr-boxington-action/compare/v1.5.0..v1.6.0) - 2026-10-01
+
+### 🚀 Features
+
+- **(cache)** opt in to saving from pull requests and protected branches (#48) by [@garysassano](https://github.com/garysassano) in [#48](https://github.com/jdx/mr-boxington-action/pull/48)
+- add a remote backend that keeps MBX_REMOTE_* settings from earlier steps (#53) by [@jdx](https://github.com/jdx) in [#53](https://github.com/jdx/mr-boxington-action/pull/53)
+
+### 🐛 Bug Fixes
+
+- **(cache)** restore a saving pull request's own entries before its base (#52) by [@garysassano](https://github.com/garysassano) in [#52](https://github.com/jdx/mr-boxington-action/pull/52)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps-dev)** bump @types/node from 26.6.1 to 26.6.2 (#54) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#54](https://github.com/jdx/mr-boxington-action/pull/54)
+- **(entire)** route checkpoints privately and commit agent hooks (#55) by [@jdx](https://github.com/jdx) in [#55](https://github.com/jdx/mr-boxington-action/pull/55)
+- **(entire)** restore lower-cost trail findings (#56) by [@jdx](https://github.com/jdx) in [#56](https://github.com/jdx/mr-boxington-action/pull/56)
+
+---
 ## [1.5.0](https://github.com/jdx/mr-boxington-action/compare/v1.4.0..v1.5.0) - 2026-09-24
 
 ### 🚀 Features
