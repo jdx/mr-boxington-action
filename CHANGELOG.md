@@ -1,7 +1,18 @@
 # Changelog
 
 ---
-## [1.6.0](https://github.com/jdx/mr-boxington-action/compare/v1.5.0..v1.6.0) - 2026-10-01
+## [1.7.0](https://github.com/jdx/mr-boxington-action/compare/v1.6.0..v1.7.0) - 2026-10-04
+
+### 🚀 Features
+
+- **(cache)** isolate objects caching and support key suffixes (#58) by [@donbeave](https://github.com/donbeave) in [#58](https://github.com/jdx/mr-boxington-action/pull/58)
+
+### New Contributors
+
+* @donbeave made their first contribution in [#58](https://github.com/jdx/mr-boxington-action/pull/58)
+
+---
+## [1.6.0](https://github.com/jdx/mr-boxington-action/compare/v1.5.0..v1.6.0) - 2026-10-02
 
 ### 🚀 Features
 
