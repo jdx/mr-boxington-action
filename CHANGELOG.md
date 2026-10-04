@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [1.7.1](https://github.com/jdx/mr-boxington-action/compare/v1.7.0..v1.7.1) - 2026-10-04
+
+### 🐛 Bug Fixes
+
+- **(cache)** await resource samples before reporting (#60) by [@donbeave](https://github.com/donbeave) in [#60](https://github.com/jdx/mr-boxington-action/pull/60)
+
+---
 ## [1.7.0](https://github.com/jdx/mr-boxington-action/compare/v1.6.0..v1.7.0) - 2026-10-04
 
 ### 🚀 Features
