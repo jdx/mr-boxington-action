@@ -5,6 +5,15 @@ export type Backend = 'local' | 'github' | 'remote'
 export type GithubCacheMode = 'objects' | 'target'
 export type BundleForm = 'tar' | 'directory'
 
+export function validateCleanTargetBeforeExport(
+  cleanTargetBeforeExport: boolean,
+  isolateObjectsCache: boolean
+): void {
+  if (cleanTargetBeforeExport && !isolateObjectsCache) {
+    throw new Error('clean-target-before-export requires isolate-objects-cache')
+  }
+}
+
 /** Keep a restored object bundle available for the lifetime of a hosted job. */
 export function githubObjectGcDefault(
   backend: Backend,

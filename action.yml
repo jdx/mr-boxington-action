@@ -34,6 +34,9 @@ inputs:
   isolate-objects-cache:
     description: Use a private RUNNER_TEMP mbx store and bundle for GitHub objects caching; intended for disposable hosted runners
     default: "false"
+  clean-target-before-export:
+    description: Remove this workspace's managed Cargo target before exporting an isolated objects cache; enable only after all target consumers finish
+    default: "false"
   save-on-workflow-dispatch:
     description: Save the GitHub cache after a successful workflow_dispatch run; enable only in trusted workflows
     default: "false"

@@ -75,6 +75,14 @@ that rely on mbx's native warm store. Use one isolated objects-cache action
 invocation per job; its stable bundle path keeps the cache version shared across
 jobs and runs.
 
+When the workflow has finished consuming the Cargo target, set
+`clean-target-before-export: true` with isolated objects caching to remove this
+workspace's managed target and learned incremental state before the bundle is
+exported. This preserves the MBX action/object closure while freeing any
+workspace data no longer needed by later steps. The input is opt-in because a
+workflow may have later consumers of its target tree; it requires
+`isolate-objects-cache: true` and runs only for eligible cache misses.
+
 From mbx 1.12.0 the bundle is a directory instead of a tar. `actions/cache`
 archives whatever path it is given, so a tar meant every byte was written twice
 on restore: once when the cache action unpacked its own archive, and again when
@@ -293,6 +301,7 @@ aliases for `remote-url` and `remote-mode`.
 | `cache-generation`          | `v1`                  | Generated GitHub cache key generation                                          |
 | `github-cache-mode`         | `target`              | GitHub payload: warm Cargo `target` tree or portable mbx `objects`             |
 | `isolate-objects-cache`     | `false`               | Put GitHub `objects` mode in a private `RUNNER_TEMP` store and save its bundle |
+| `clean-target-before-export` | `false`               | Remove the completed workspace target before exporting an isolated objects cache |
 | `save-on-workflow-dispatch` | `false`               | Save after a successful trusted `workflow_dispatch` run                        |
 | `save-on-pull-request`      | `false`               | Save after a successful same-repository pull request, scoped to it             |
 | `save-on-protected-branch`  | `false`               | Save after a successful push to a protected non-default branch                 |

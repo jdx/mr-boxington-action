@@ -881,6 +881,8 @@ export async function saveIsolatedObjectsBundle(options: {
   saveEligible: boolean
   exactHit: boolean
   cargoTarget: string
+  /** Run only after an eligible cache miss is known and before bundle export. */
+  prepareExport?: () => Promise<void>
   exportBundle: (bundlePath: string) => Promise<{exitCode: number; output: string}>
   isEmptyExport: (output: string) => boolean
   saveCache: (paths: string[], primaryKey: string) => Promise<number>
@@ -898,6 +900,15 @@ export async function saveIsolatedObjectsBundle(options: {
   if (options.exactHit) return 'exact-hit'
   if (await maybeLstat(options.paths.bundle) !== MISSING) {
     throw new Error('private objects bundle already exists before export')
+  }
+  if (options.prepareExport) {
+    await options.prepareExport()
+    await reportObjectsResourcePhase(
+      options.paths,
+      'after-export-preparation',
+      options.cargoTarget,
+      options.emit
+    )
   }
   const exported = await withObjectsResourceSampler(
     options.paths,

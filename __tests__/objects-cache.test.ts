@@ -611,10 +611,15 @@ describe('isolated objects bundle save lifecycle', () => {
         saveEligible: true,
         exactHit: false,
         cargoTarget,
+        prepareExport: async () => {
+          order.push('clean-target')
+          await rm(cargoTarget, {recursive: true, force: true})
+        },
         exportBundle: async bundle => {
           order.push('export')
           expect(bundle).toBe(paths.bundle)
           expect(await pathExists(bundle)).toBe(false)
+          expect(await pathExists(cargoTarget)).toBe(false)
           await mkdir(bundle)
           await writeFile(path.join(bundle, 'manifest.json'), '{"objects":1}')
           return {exitCode: 0, output: ''}
@@ -632,10 +637,11 @@ describe('isolated objects bundle save lifecycle', () => {
         warn: message => events.push(`warning: ${message}`)
       })
       expect(result).toBe('saved')
-      expect(order).toEqual(['export', 'save'])
+      expect(order).toEqual(['clean-target', 'export', 'save'])
       expect(await pathExists(paths.bundle)).toBe(false)
       expect(await pathExists(paths.store)).toBe(false)
       expect(events.some(event => event.includes('after-build-before-export'))).toBe(true)
+      expect(events.some(event => event.includes('after-export-preparation'))).toBe(true)
       expect(events.some(event => event.includes('after-bundle-export'))).toBe(true)
       expect(events.some(event => event.includes('after-store-removal'))).toBe(true)
       expect(events.some(event => event.includes('actions-cache-save'))).toBe(true)
@@ -693,6 +699,33 @@ describe('isolated objects bundle save lifecycle', () => {
       })
     ).rejects.toThrow(/export exited with code 2/)
     expect(saveCalls).toBe(0)
+    expect(await pathExists(paths.store)).toBe(true)
+  })
+
+  it('does not export when target cleanup fails', async () => {
+    const {paths, cargoTarget} = await setup()
+    let exportCalls = 0
+    await expect(
+      saveIsolatedObjectsBundle({
+        paths,
+        primaryKey: 'generated-key',
+        saveEligible: true,
+        exactHit: false,
+        cargoTarget,
+        prepareExport: async () => {
+          throw new Error('target cleanup failed')
+        },
+        exportBundle: async () => {
+          exportCalls++
+          return {exitCode: 0, output: ''}
+        },
+        isEmptyExport: () => false,
+        saveCache: async () => 1,
+        emit: () => {},
+        warn: () => {}
+      })
+    ).rejects.toThrow(/target cleanup failed/)
+    expect(exportCalls).toBe(0)
     expect(await pathExists(paths.store)).toBe(true)
   })
 
@@ -843,12 +876,16 @@ describe('isolated objects bundle save lifecycle', () => {
     const {paths, cargoTarget} = await setup()
     let exportCalls = 0
     let saveCalls = 0
+    let prepareCalls = 0
     const result = await saveIsolatedObjectsBundle({
       paths,
       primaryKey: 'generated-key',
       saveEligible,
       exactHit,
       cargoTarget,
+      prepareExport: async () => {
+        prepareCalls++
+      },
       exportBundle: async () => {
         exportCalls++
         return {exitCode: 0, output: ''}
@@ -864,6 +901,7 @@ describe('isolated objects bundle save lifecycle', () => {
     expect(result).toBe(expected)
     expect(exportCalls).toBe(0)
     expect(saveCalls).toBe(0)
+    expect(prepareCalls).toBe(0)
     expect(await pathExists(paths.store)).toBe(true)
   })
 

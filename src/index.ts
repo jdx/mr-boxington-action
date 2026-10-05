@@ -43,6 +43,7 @@ import {
   savePolicy,
   supportsDirectoryBundle,
   toolchainSegment,
+  validateCleanTargetBeforeExport,
   verifiedReleaseAsset,
   type GithubRelease,
   type VerifiedReleaseAsset
@@ -73,6 +74,7 @@ const CACHE_EXPORT_GROUP_STATE = 'mbx-cache-export-group'
 const CACHE_PATHS_STATE = 'mbx-cache-paths'
 const CACHE_BUNDLE_FORM_STATE = 'mbx-cache-bundle-form'
 const CACHE_ISOLATION_ROOT_STATE = 'mbx-cache-isolation-root'
+const CLEAN_TARGET_BEFORE_EXPORT_STATE = 'mbx-clean-target-before-export'
 const CARGO_WORKSPACE_STATE = 'mbx-cargo-workspace'
 const MBX_STATE = 'mbx-bin'
 const CACHE_ARCHIVE_NAME = 'github-actions-cache-v1.tar'
@@ -331,6 +333,8 @@ async function main(): Promise<void> {
   const backend = parseBackend(core.getInput('backend'))
   const githubCacheMode = parseGithubCacheMode(core.getInput('github-cache-mode'))
   const isolateObjectsCache = core.getBooleanInput('isolate-objects-cache')
+  const cleanTargetBeforeExport = core.getBooleanInput('clean-target-before-export')
+  validateCleanTargetBeforeExport(cleanTargetBeforeExport, isolateObjectsCache)
   if (isolateObjectsCache && (backend !== 'github' || githubCacheMode !== 'objects')) {
     throw new Error('isolate-objects-cache requires backend github and github-cache-mode objects')
   }
@@ -551,6 +555,7 @@ async function main(): Promise<void> {
   core.saveState(CARGO_WORKSPACE_STATE, cargoWorkspace)
   core.saveState(CACHE_KEY_STATE, primaryKey)
   core.saveState(CACHE_HIT_STATE, hit ? 'true' : 'false')
+  core.saveState(CLEAN_TARGET_BEFORE_EXPORT_STATE, cleanTargetBeforeExport ? 'true' : 'false')
   core.saveState(
     POST_STATE,
     save ? 'github-save' : 'github-restore-only'
@@ -618,6 +623,16 @@ async function post(): Promise<void> {
           saveEligible: postState === 'github-save',
           exactHit: core.getState(CACHE_HIT_STATE) === 'true',
           cargoTarget: targetDirectory,
+          prepareExport:
+            core.getState(CLEAN_TARGET_BEFORE_EXPORT_STATE) === 'true'
+              ? async () => {
+                  const mbx = core.getState(MBX_STATE)
+                  if (!mbx) throw new Error('isolated objects cache is missing its mbx executable')
+                  core.info(`Removing the managed Cargo target at ${cargoWorkspace} before object export`)
+                  const exitCode = await exec.exec(mbx, ['clean'], {cwd: cargoWorkspace})
+                  if (exitCode !== 0) throw new Error(`mbx clean exited with code ${exitCode}`)
+                }
+              : undefined,
           exportBundle: async bundlePath => {
             const mbx = core.getState(MBX_STATE)
             if (!mbx) throw new Error('isolated objects cache is missing its mbx executable')

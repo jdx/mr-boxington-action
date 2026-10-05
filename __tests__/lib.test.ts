@@ -33,6 +33,7 @@ import {
   savePolicy,
   supportsDirectoryBundle,
   toolchainSegment,
+  validateCleanTargetBeforeExport,
   verifiedReleaseAsset
 } from '../src/lib.js'
 
@@ -52,6 +53,14 @@ describe('calling card', () => {
 })
 
 describe('inputs', () => {
+  it('requires isolated objects caching before removing the workspace target', () => {
+    expect(() => validateCleanTargetBeforeExport(false, false)).not.toThrow()
+    expect(() => validateCleanTargetBeforeExport(true, true)).not.toThrow()
+    expect(() => validateCleanTargetBeforeExport(true, false)).toThrow(
+      'clean-target-before-export requires isolate-objects-cache'
+    )
+  })
+
   it('authenticates GitHub API requests when a token is available', () => {
     expect(githubApiHeaders('secret')).toEqual({
       Accept: 'application/vnd.github+json',
