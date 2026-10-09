@@ -236,9 +236,22 @@ jobs:
           install_args: hk pkl jactionlint
       - run: mise x hk -- hk check --all
 
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          advanced-security: false
+          min-severity: high
+
   final:
     permissions: {}
-    needs: [action, hk, remote, remote-missing, server, target, test, toolchain]
+    needs: [action, hk, remote, remote-missing, server, target, test, toolchain, zizmor]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     # Run on success or upstream failure but skip when the workflow is cancelled
