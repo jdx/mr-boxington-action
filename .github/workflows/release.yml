@@ -5,6 +5,10 @@ on:
     types: [closed]
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
@@ -15,6 +19,7 @@ jobs:
       contents: write
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,6 +39,7 @@ jobs:
     continue-on-error: true
     permissions:
       contents: read
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
