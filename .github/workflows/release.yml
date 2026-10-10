@@ -5,9 +5,14 @@ on:
     types: [closed]
     branches: [main]
 
+# Every merged release PR must tag its own version, and scripts/postversion.sh
+# force-pushes the shared major tag, so releases run one at a time, in order.
+# queue: max keeps every pending run (the default would replace an older
+# pending release with a newer one and skip its tag).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: release
   cancel-in-progress: false
+  queue: max
 
 permissions: {}
 
@@ -19,7 +24,7 @@ jobs:
       contents: write
     outputs:
       tag: ${{ steps.version.outputs.tag }}
-    timeout-minutes: 10
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -39,7 +44,7 @@ jobs:
     continue-on-error: true
     permissions:
       contents: read
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
