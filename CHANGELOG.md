@@ -1,6 +1,24 @@
 # Changelog
 
 ---
+## [1.7.2](https://github.com/jdx/mr-boxington-action/compare/v1.7.1..v1.7.2) - 2026-10-10
+
+### 🐛 Bug Fixes
+
+- **(cache)** remove read-only MBX object trees (#62) by [@donbeave](https://github.com/donbeave) in [#62](https://github.com/jdx/mr-boxington-action/pull/62)
+- **(cache)** clean managed target before objects export (#68) by [@donbeave](https://github.com/donbeave) in [#68](https://github.com/jdx/mr-boxington-action/pull/68)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** lint workflows with jactionlint (#69) by [@jdx](https://github.com/jdx) in [#69](https://github.com/jdx/mr-boxington-action/pull/69)
+- **(ci)** switch to jactionlint v2 and drop zizmor (#71) by [@jdx](https://github.com/jdx) in [#71](https://github.com/jdx/mr-boxington-action/pull/71)
+- **(deps)** bump jdx/mise-action from 4.3.0 to 5.0.1 (#67) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#67](https://github.com/jdx/mr-boxington-action/pull/67)
+- **(deps)** bump @actions/cache from 6.2.0 to 6.3.0 (#65) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#65](https://github.com/jdx/mr-boxington-action/pull/65)
+- **(deps-dev)** bump @types/node from 26.6.2 to 26.6.4 (#64) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#64](https://github.com/jdx/mr-boxington-action/pull/64)
+- **(deps-dev)** bump vitest from 5.0.1 to 5.0.3 (#66) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#66](https://github.com/jdx/mr-boxington-action/pull/66)
+- require zizmor in final (#70) by [@jdx](https://github.com/jdx) in [#70](https://github.com/jdx/mr-boxington-action/pull/70)
+
+---
 ## [1.7.1](https://github.com/jdx/mr-boxington-action/compare/v1.7.0..v1.7.1) - 2026-10-04
 
 ### 🐛 Bug Fixes
