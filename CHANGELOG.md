@@ -1,7 +1,16 @@
 # Changelog
 
 ---
-## [1.7.2](https://github.com/jdx/mr-boxington-action/compare/v1.7.1..v1.7.2) - 2026-10-10
+## [1.7.3](https://github.com/jdx/mr-boxington-action/compare/v1.7.2..v1.7.3) - 2026-10-15
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps)** bump jdx/mise-action from 5.0.1 to 5.1.1 (#72) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#72](https://github.com/jdx/mr-boxington-action/pull/72)
+- **(release)** shorten minimum release age to 2 days (#76) by [@jdx](https://github.com/jdx) in [#76](https://github.com/jdx/mr-boxington-action/pull/76)
+- stop restoring caches in release jobs (#74) by [@jdx](https://github.com/jdx) in [#74](https://github.com/jdx/mr-boxington-action/pull/74)
+
+---
+## [1.7.2](https://github.com/jdx/mr-boxington-action/compare/v1.7.1..v1.7.2) - 2026-10-11
 
 ### 🐛 Bug Fixes
 
