@@ -1,7 +1,21 @@
 # Changelog
 
 ---
-## [1.7.2](https://github.com/jdx/mr-boxington-action/compare/v1.7.1..v1.7.2) - 2026-10-10
+## [1.7.3](https://github.com/jdx/mr-boxington-action/compare/v1.7.2..v1.7.3) - 2026-10-26
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps)** bump jdx/mise-action from 5.0.1 to 5.1.1 (#72) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#72](https://github.com/jdx/mr-boxington-action/pull/72)
+- **(deps)** bump actions/setup-node from 7.0.0 to 7.1.0 (#77) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#77](https://github.com/jdx/mr-boxington-action/pull/77)
+- **(deps)** bump jdx/mise-action from 5.1.1 to 5.1.2 (#78) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#78](https://github.com/jdx/mr-boxington-action/pull/78)
+- **(deps)** bump jdx/mise-action from 5.2.0 to 5.2.1 (#89) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#89](https://github.com/jdx/mr-boxington-action/pull/89)
+- **(deps-dev)** bump @types/node from 26.6.4 to 26.6.5 (#79) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#79](https://github.com/jdx/mr-boxington-action/pull/79)
+- **(release)** shorten minimum release age to 2 days (#76) by [@jdx](https://github.com/jdx) in [#76](https://github.com/jdx/mr-boxington-action/pull/76)
+- stop restoring caches in release jobs (#74) by [@jdx](https://github.com/jdx) in [#74](https://github.com/jdx/mr-boxington-action/pull/74)
+- rebuild dist automatically on Renovate PRs (#81) by [@jdx](https://github.com/jdx) in [#81](https://github.com/jdx/mr-boxington-action/pull/81)
+
+---
+## [1.7.2](https://github.com/jdx/mr-boxington-action/compare/v1.7.1..v1.7.2) - 2026-10-11
 
 ### 🐛 Bug Fixes
 
