@@ -53,12 +53,15 @@ jobs:
           # input. Remove once @actions/glob supports minimatch >=11.0.1.
           ignored='["https://github.com/advisories/GHSA-g3hv-75wg-m249"]'
           npm audit --audit-level=moderate --json > "$RUNNER_TEMP/audit.json" || true
+          # An audit that errors out (registry unreachable) has no
+          # .vulnerabilities; treat that as a failure so it still reports.
           remaining="$(jq --argjson ignored "$ignored" '
+            if .vulnerabilities == null then "error" else
             [.vulnerabilities[].via[]
              | select(type == "object"
                       and (.severity == "moderate" or .severity == "high" or .severity == "critical")
                       and ((.url | IN($ignored[])) | not))]
-            | length' "$RUNNER_TEMP/audit.json")"
+            | length end' "$RUNNER_TEMP/audit.json" 2>/dev/null)" || remaining=error
           if [[ "$remaining" == "0" ]]; then
             echo "npm audit: no advisories beyond the ignored list." | tee "$RUNNER_TEMP/audit.txt"
           else
