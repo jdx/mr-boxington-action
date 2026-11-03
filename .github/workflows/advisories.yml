@@ -41,7 +41,30 @@ jobs:
         # Without pipefail the pipeline reports tee's status and a failing
         # `npm audit` would be swallowed -- no mail, no red run.
         shell: bash
-        run: npm audit --audit-level=moderate 2>&1 | tee "$RUNNER_TEMP/audit.txt"
+        run: |
+          # npm audit has no ignore flag, so advisories listed here are
+          # filtered out of the JSON report. Each entry needs a reason and
+          # the condition under which it can be removed.
+          #
+          # GHSA-g3hv-75wg-m249 (minimatch DoS via globparts amplification):
+          # reached only through @actions/cache -> @actions/glob, which pins
+          # minimatch 10.x and calls matchOne(), private in the patched 11.x.
+          # Glob patterns come from the workflow author, not from untrusted
+          # input. Remove once @actions/glob supports minimatch >=11.0.1.
+          ignored='["https://github.com/advisories/GHSA-g3hv-75wg-m249"]'
+          npm audit --audit-level=moderate --json > "$RUNNER_TEMP/audit.json" || true
+          remaining="$(jq --argjson ignored "$ignored" '
+            [.vulnerabilities[].via[]
+             | select(type == "object"
+                      and (.severity == "moderate" or .severity == "high" or .severity == "critical")
+                      and ((.url | IN($ignored[])) | not))]
+            | length' "$RUNNER_TEMP/audit.json")"
+          if [[ "$remaining" == "0" ]]; then
+            echo "npm audit: no advisories beyond the ignored list." | tee "$RUNNER_TEMP/audit.txt"
+          else
+            npm audit --audit-level=moderate 2>&1 | tee "$RUNNER_TEMP/audit.txt"
+            exit 1
+          fi
 
       - name: Publish the audit report
         if: always()
