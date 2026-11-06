@@ -1,6 +1,14 @@
 # Changelog
 
 ---
+## [1.7.4](https://github.com/jdx/mr-boxington-action/compare/v1.7.3..v1.7.4) - 2026-11-06
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps)** bump jdx/mise-action from 5.2.2 to 5.2.3 (#95) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#95](https://github.com/jdx/mr-boxington-action/pull/95)
+- ignore the minimatch advisory in the daily audit (#99) by [@jdx](https://github.com/jdx) in [#99](https://github.com/jdx/mr-boxington-action/pull/99)
+
+---
 ## [1.7.3](https://github.com/jdx/mr-boxington-action/compare/v1.7.2..v1.7.3) - 2026-10-26
 
 ### ⚙️ Miscellaneous Tasks
