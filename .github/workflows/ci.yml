@@ -109,7 +109,11 @@ jobs:
       - name: Build into the in-place target
         run: mbx build --locked --manifest-path .github/e2e/fixture/Cargo.toml
       - name: Check Cargo state stayed in place
-        run: node -e "const fs = require('fs'); if (!fs.existsSync('.github/e2e/fixture/target/debug/.fingerprint')) { console.error('no fingerprint tree in the workspace target'); process.exit(1) }"
+        # Cargo before 1.100 keeps fingerprints in `target/debug/.fingerprint`;
+        # newer Cargo keeps them per unit under `target/debug/build/*/*/fingerprint`.
+        # Runner images carry different Rust releases, so accept either.
+        run: |
+          node -e "const fs = require('fs'); const path = require('path'); const profile = '.github/e2e/fixture/target/debug'; const units = fs.existsSync(path.join(profile, 'build')) ? fs.readdirSync(path.join(profile, 'build')).flatMap(pkg => fs.readdirSync(path.join(profile, 'build', pkg)).map(unit => path.join(profile, 'build', pkg, unit, 'fingerprint'))) : []; if (!fs.existsSync(path.join(profile, '.fingerprint')) && !units.some(dir => fs.existsSync(dir))) { console.error('no fingerprint tree in the workspace target'); process.exit(1) }"
 
   toolchain:
     runs-on: ubuntu-latest

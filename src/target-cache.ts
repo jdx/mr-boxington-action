@@ -111,6 +111,25 @@ async function pruneSparseIndex(
   return empty
 }
 
+/**
+ * Cargo's per-unit build-dir layout keeps each unit's state in
+ * `build/<package>/<hash>/fingerprint` instead of a profile-level `.fingerprint`
+ * directory, so a populated one marks reusable state the same way.
+ */
+async function hasUnitFingerprints(buildDirectory: string): Promise<boolean> {
+  for (const pkg of await readdir(buildDirectory, {withFileTypes: true})) {
+    if (!pkg.isDirectory()) continue
+    for (const unit of await readdir(path.join(buildDirectory, pkg.name), {withFileTypes: true})) {
+      if (!unit.isDirectory()) continue
+      const fingerprint = path.join(buildDirectory, pkg.name, unit.name, 'fingerprint')
+      if ((await directoryExists(fingerprint)) && (await readdir(fingerprint)).length > 0) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 export async function hasReusableCargoTarget(targetDirectory: string): Promise<boolean> {
   if (!(await directoryExists(targetDirectory))) return false
   for (const entry of await readdir(targetDirectory, {withFileTypes: true})) {
@@ -120,7 +139,11 @@ export async function hasReusableCargoTarget(targetDirectory: string): Promise<b
       if ((await readdir(child)).length > 0) return true
       continue
     }
-    if (!['build', 'deps', '.mbx-build-script-shims'].includes(entry.name)) {
+    if (entry.name === 'build') {
+      if (await hasUnitFingerprints(child)) return true
+      continue
+    }
+    if (!['deps', '.mbx-build-script-shims'].includes(entry.name)) {
       if (await hasReusableCargoTarget(child)) return true
     }
   }
