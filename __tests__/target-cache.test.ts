@@ -101,6 +101,15 @@ describe('target cache pruning', () => {
     await expect(hasReusableCargoTarget(path.join(root, 'target'))).resolves.toBe(true)
   })
 
+  it('recognizes reusable state in the per-unit build-dir layout', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'mbx-unit-layout-'))
+    const unit = path.join(root, 'target', 'debug', 'build', 'my-package', 'abcd1234')
+    await mkdir(path.join(unit, 'fingerprint'), {recursive: true})
+    await expect(hasReusableCargoTarget(path.join(root, 'target'))).resolves.toBe(false)
+    await writeFile(path.join(unit, 'fingerprint', 'lib-my_package'), 'state')
+    await expect(hasReusableCargoTarget(path.join(root, 'target'))).resolves.toBe(true)
+  })
+
   it('omits and restores shared mbx shim binaries around transport', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'mbx-target-shims-'))
     const target = path.join(root, 'target')
