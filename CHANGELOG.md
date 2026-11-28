@@ -1,6 +1,14 @@
 # Changelog
 
 ---
+## [1.7.5](https://github.com/jdx/mr-boxington-action/compare/v1.7.4..v1.7.5) - 2026-11-28
+
+### ⚙️ Miscellaneous Tasks
+
+- **(deps)** bump jdx/mise-action from 5.2.8 to 5.2.9 (#111) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [#111](https://github.com/jdx/mr-boxington-action/pull/111)
+- add GitHub Actions workflow lockfile (#116) by [@jdx](https://github.com/jdx) in [#116](https://github.com/jdx/mr-boxington-action/pull/116)
+
+---
 ## [1.7.4](https://github.com/jdx/mr-boxington-action/compare/v1.7.3..v1.7.4) - 2026-11-20
 
 ### 🐛 Bug Fixes
